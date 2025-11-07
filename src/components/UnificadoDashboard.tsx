@@ -205,7 +205,20 @@ let USER_CAPSULES: CapsuleProgress[] = loadUserCapsules();
 export default function UnificadoDashboard() {
   const { user, signInWithGoogle } = useAuth();
   const { points, badges, subtractPoints } = useGamification();
-  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>([]);
+  // CORRECCIÓN GLOBAL: Cargar premios desde localStorage
+  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => {
+    try {
+      const savedPrizes = localStorage.getItem('oa_redeemed_prizes');
+      if (savedPrizes) {
+        const prizes = JSON.parse(savedPrizes);
+        console.log('[UNIFICADO_DASHBOARD] Premios redimidos cargados:', prizes.length);
+        return prizes;
+      }
+    } catch (error) {
+      console.error('Error loading redeemed prizes from localStorage:', error);
+    }
+    return [];
+  });
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
   const [validationCode, setValidationCode] = useState("");
@@ -232,6 +245,32 @@ export default function UnificadoDashboard() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('gamification:update', handleStorageChange);
+    };
+  }, []);
+
+  // CORRECCIÓN GLOBAL: Sincronizar premios redimidos entre pestañas
+  React.useEffect(() => {
+    const handlePrizeStorageChange = (event: StorageEvent) => {
+      if (event.key === 'oa_redeemed_prizes') {
+        try {
+          const updatedPrizes = event.newValue ? JSON.parse(event.newValue) : [];
+          console.log('[UNIFICADO_DASHBOARD] Premios sincronizados desde otra pestaña:', updatedPrizes.length);
+          setRedeemedPrizes(updatedPrizes);
+        } catch (error) {
+          console.error('Error syncing prizes from localStorage:', error);
+        }
+      }
+    };
+
+    // Escuchar cambios en localStorage para premios
+    window.addEventListener('storage', handlePrizeStorageChange);
+    
+    // Escuchar cambios personalizados de premios
+    window.addEventListener('prizes:update', handlePrizeStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handlePrizeStorageChange);
+      window.removeEventListener('prizes:update', handlePrizeStorageChange);
     };
   }, []);
 
@@ -324,7 +363,17 @@ const nextMilestone = getNextMilestone();
       };
 
       // Agregar a la lista local
-      setRedeemedPrizes(prev => [newRedeemedPrize, ...prev]);
+      setRedeemedPrizes(prev => {
+        const newPrizes = [newRedeemedPrize, ...prev];
+        // CORRECCIÓN GLOBAL: Guardar premios en localStorage
+        try {
+          localStorage.setItem('oa_redeemed_prizes', JSON.stringify(newPrizes));
+          console.log('[UNIFICADO_DASHBOARD] Premios guardados en localStorage:', newPrizes.length);
+        } catch (error) {
+          console.error('Error saving redeemed prizes to localStorage:', error);
+        }
+        return newPrizes;
+      });
 
       // Close modal
       setShowRedeemModal(false);
