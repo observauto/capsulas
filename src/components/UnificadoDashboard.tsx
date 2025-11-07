@@ -202,23 +202,32 @@ const loadUserCapsules = (): CapsuleProgress[] => {
 // CÁPSULAS EN PROGRESO - Cargadas dinámicamente
 let USER_CAPSULES: CapsuleProgress[] = loadUserCapsules();
 
+// PREMIOS REDIMIDOS - Sistema de persistencia completo
+const REDEEMED_PRIZES_KEY = 'redeemedPrizes';
+
+const loadRedeemedPrizes = (): RedeemedPrize[] => {
+  try {
+    const savedPrizes = localStorage.getItem(REDEEMED_PRIZES_KEY);
+    return savedPrizes ? JSON.parse(savedPrizes) : [];
+  } catch (error) {
+    console.error('Error loading redeemed prizes from localStorage:', error);
+    return [];
+  }
+};
+
+const saveRedeemedPrizes = (prizes: RedeemedPrize[]): void => {
+  try {
+    localStorage.setItem(REDEEMED_PRIZES_KEY, JSON.stringify(prizes));
+    console.log('[UNIFICADO_DASHBOARD] Premios redimidos guardados:', prizes.length);
+  } catch (error) {
+    console.error('Error saving redeemed prizes to localStorage:', error);
+  }
+};
+
 export default function UnificadoDashboard() {
   const { user, signInWithGoogle } = useAuth();
   const { points, badges, subtractPoints } = useGamification();
-  // CORRECCIÓN GLOBAL: Cargar premios desde localStorage
-  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => {
-    try {
-      const savedPrizes = localStorage.getItem('oa_redeemed_prizes');
-      if (savedPrizes) {
-        const prizes = JSON.parse(savedPrizes);
-        console.log('[UNIFICADO_DASHBOARD] Premios redimidos cargados:', prizes.length);
-        return prizes;
-      }
-    } catch (error) {
-      console.error('Error loading redeemed prizes from localStorage:', error);
-    }
-    return [];
-  });
+  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes());
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
   const [validationCode, setValidationCode] = useState("");
@@ -248,29 +257,21 @@ export default function UnificadoDashboard() {
     };
   }, []);
 
-  // CORRECCIÓN GLOBAL: Sincronizar premios redimidos entre pestañas
+  // Actualizar premios redimidos cuando cambien en localStorage
   React.useEffect(() => {
-    const handlePrizeStorageChange = (event: StorageEvent) => {
-      if (event.key === 'oa_redeemed_prizes') {
-        try {
-          const updatedPrizes = event.newValue ? JSON.parse(event.newValue) : [];
-          console.log('[UNIFICADO_DASHBOARD] Premios sincronizados desde otra pestaña:', updatedPrizes.length);
-          setRedeemedPrizes(updatedPrizes);
-        } catch (error) {
-          console.error('Error syncing prizes from localStorage:', error);
-        }
-      }
+    const handlePrizesChange = () => {
+      setRedeemedPrizes(loadRedeemedPrizes());
     };
 
-    // Escuchar cambios en localStorage para premios
-    window.addEventListener('storage', handlePrizeStorageChange);
+    // Escuchar cambios en localStorage para premios redimidos
+    window.addEventListener('storage', handlePrizesChange);
     
-    // Escuchar cambios personalizados de premios
-    window.addEventListener('prizes:update', handlePrizeStorageChange);
+    // Escuchar cambios personalizados para premios redimidos
+    window.addEventListener('prizes:redeem', handlePrizesChange);
 
     return () => {
-      window.removeEventListener('storage', handlePrizeStorageChange);
-      window.removeEventListener('prizes:update', handlePrizeStorageChange);
+      window.removeEventListener('storage', handlePrizesChange);
+      window.removeEventListener('prizes:redeem', handlePrizesChange);
     };
   }, []);
 
@@ -362,18 +363,15 @@ const nextMilestone = getNextMilestone();
         status: 'pending'
       };
 
-      // Agregar a la lista local
-      setRedeemedPrizes(prev => {
-        const newPrizes = [newRedeemedPrize, ...prev];
-        // CORRECCIÓN GLOBAL: Guardar premios en localStorage
-        try {
-          localStorage.setItem('oa_redeemed_prizes', JSON.stringify(newPrizes));
-          console.log('[UNIFICADO_DASHBOARD] Premios guardados en localStorage:', newPrizes.length);
-        } catch (error) {
-          console.error('Error saving redeemed prizes to localStorage:', error);
-        }
-        return newPrizes;
-      });
+      // Agregar a la lista local Y guardar en localStorage
+      const updatedPrizes = [newRedeemedPrize, ...redeemedPrizes];
+      setRedeemedPrizes(updatedPrizes);
+      saveRedeemedPrizes(updatedPrizes);
+
+      // Disparar evento para notificar a otros componentes
+      window.dispatchEvent(new CustomEvent('prizes:redeem', { 
+        detail: { prize: newRedeemedPrize, totalCount: updatedPrizes.length } 
+      }));
 
       // Close modal
       setShowRedeemModal(false);
