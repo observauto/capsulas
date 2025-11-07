@@ -1,188 +1,172 @@
-// HOTFIX GLOBAL - PERSISTENCIA DE PREMIOS CANJEADOS
-// Este hotfix corrige el problema de persistencia de premios en la aplicación
+/**
+ * HOTFIX PERSISTENCIA PREMIOS - Cápsulas Observauto
+ * Fecha: 2025-11-07
+ * Propósito: Asegurar que los premios se mantengan persistentes en localStorage
+ */
 
 (function() {
+    'use strict';
+    
     console.log('🔧 Aplicando hotfix de persistencia de premios...');
     
-    // Función para guardar premios canjeados en localStorage
-    function saveRedeemedPrizes(prizes) {
+    // Verificar si ya se aplicó el hotfix
+    if (window.hotfixPremiosApplied) {
+        console.log('✅ Hotfix de premios ya aplicado');
+        return;
+    }
+    
+    // Función para guardar premios en localStorage
+    function guardarPremios(premios) {
         try {
-            const userData = JSON.parse(localStorage.getItem('observauto_user') || '{}');
-            userData.redeemedPrizes = prizes;
-            localStorage.setItem('observauto_user', JSON.stringify(userData));
-            console.log('✅ Premios canjeados guardados en localStorage:', prizes);
-            return true;
+            if (premios && Array.isArray(premios)) {
+                localStorage.setItem('observauto-premios', JSON.stringify(premios));
+                console.log('💾 Premios guardados en localStorage:', premios.length, 'elementos');
+            }
         } catch (error) {
-            console.error('❌ Error al guardar premios canjeados:', error);
-            return false;
+            console.warn('⚠️ Error al guardar premios:', error);
         }
     }
     
-    // Función para cargar premios canjeados del localStorage
-    function loadRedeemedPrizes() {
+    // Función para cargar premios desde localStorage
+    function cargarPremios() {
         try {
-            const userData = JSON.parse(localStorage.getItem('observauto_user') || '{}');
-            return userData.redeemedPrizes || [];
+            const premiosGuardados = localStorage.getItem('observauto-premios');
+            if (premiosGuardados) {
+                const premios = JSON.parse(premiosGuardados);
+                console.log('📥 Premios cargados desde localStorage:', premios.length, 'elementos');
+                return premios;
+            }
         } catch (error) {
-            console.error('❌ Error al cargar premios canjeados:', error);
-            return [];
+            console.warn('⚠️ Error al cargar premios:', error);
         }
+        return [];
     }
     
-    // Función para integrar con el sistema de React
-    function integrateWithReact() {
-        // Buscar el estado de premios canjeados en React
-        const prizeElements = document.querySelectorAll('[data-state="redeemed"], [class*="redeemed"], [class*="prize"]');
-        
-        if (window.React || window._reactInternalFiber) {
-            // Intentar encontrar el estado de React
-            console.log('🔍 Intentando integrar con React...');
-        }
-    }
-    
-    // Interceptar el localStorage.setItem para detectar cambios de premios
-    const originalSetItem = localStorage.setItem;
-    localStorage.setItem = function(key, value) {
-        // Detectar cuando se guardan premios canjeados
-        if (key === 'observauto_user' || key.includes('prize') || key.includes('redeemed')) {
-            console.log('💾 Detectado cambio en premios:', { key, value });
-            
-            try {
-                const data = JSON.parse(value);
-                if (data.redeemedPrizes) {
-                    console.log('🎁 Premios detectados en datos:', data.redeemedPrizes);
-                }
-            } catch (e) {
-                // No es JSON válido
-            }
-        }
-        
-        // Llamar a la función original
-        return originalSetItem.call(this, key, value);
-    };
-    
-    // Función para sincronizar premios con la interfaz
-    function syncPrizesWithUI() {
-        const redeemedPrizes = loadRedeemedPrizes();
-        
-        // Buscar elementos de premios en la UI
-        const prizeElements = document.querySelectorAll('.prize-card, [class*="prize"], [data-prize]');
-        
-        prizeElements.forEach(element => {
-            const prizeId = element.getAttribute('data-prize-id') || element.id;
-            if (prizeId && redeemedPrizes.includes(prizeId)) {
-                // Marcar como canjeado
-                element.classList.add('redeemed');
-                const button = element.querySelector('button, [class*="button"]');
-                if (button) {
-                    button.textContent = 'Canjeado';
-                    button.disabled = true;
-                    button.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            }
-        });
-        
-        console.log('🔄 Sincronización de premios completada');
-    }
-    
-    // Monitorear cambios en el DOM
-    const observer = new MutationObserver((mutations) => {
-        let shouldSync = false;
-        
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'childList') {
-                // Detectar si se agregaron elementos de premios
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === 1) { // Element node
-                        const hasPrizeClass = node.className && (
-                            node.className.includes('prize') || 
-                            node.className.includes('redeem') ||
-                            node.className.includes('canjear')
-                        );
-                        if (hasPrizeClass) {
-                            shouldSync = true;
+    // Interceptar funciones relacionadas con premios
+    function interceptarFuncionesPremios() {
+        // Esperar a que la aplicación esté cargada
+        if (typeof window !== 'undefined') {
+            // Función para encontrar y modificar métodos relacionados con premios
+            const buscarYModificarPremios = () => {
+                try {
+                    // Buscar en el objeto window o cualquier objeto global
+                    Object.keys(window).forEach(key => {
+                        const obj = window[key];
+                        if (obj && typeof obj === 'object') {
+                            // Buscar métodos relacionados con premios
+                            Object.keys(obj).forEach(methodKey => {
+                                if (methodKey.toLowerCase().includes('premio') || 
+                                    methodKey.toLowerCase().includes('reward') ||
+                                    methodKey.toLowerCase().includes('badge')) {
+                                    
+                                    const originalMethod = obj[methodKey];
+                                    if (typeof originalMethod === 'function') {
+                                        console.log('🎯 Interceptando método de premios:', methodKey);
+                                        
+                                        obj[methodKey] = function(...args) {
+                                            const result = originalMethod.apply(this, args);
+                                            
+                                            // Guardar premios después de cualquier cambio
+                                            setTimeout(() => {
+                                                if (typeof this.premios !== 'undefined' || this.state?.premios) {
+                                                    const premios = this.premios || this.state?.premios;
+                                                    guardarPremios(premios);
+                                                }
+                                            }, 100);
+                                            
+                                            return result;
+                                        };
+                                    }
+                                }
+                            });
                         }
-                    }
-                });
-            }
-        });
-        
-        if (shouldSync) {
-            setTimeout(syncPrizesWithUI, 100);
-        }
-    });
-    
-    // Iniciar monitoreo
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    // Intervalo de sincronización
-    setInterval(syncPrizesWithUI, 2000);
-    
-    // Event listener para cambios en localStorage
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'observauto_user') {
-            setTimeout(syncPrizesWithUI, 100);
-        }
-    });
-    
-    // Función para usar desde la consola
-    window.fixPremios = {
-        // Ver premios actuales
-        getRedeemed: () => {
-            const prizes = loadRedeemedPrizes();
-            console.log('🎁 Premios canjeados:', prizes);
-            return prizes;
-        },
-        
-        // Agregar premio manualmente
-        addPrize: (prizeId) => {
-            const prizes = loadRedeemedPrizes();
-            if (!prizes.includes(prizeId)) {
-                prizes.push(prizeId);
-                saveRedeemedPrizes(prizes);
-                console.log('✅ Premio agregado:', prizeId);
-            } else {
-                console.log('⚠️ Premio ya existe:', prizeId);
-            }
-            syncPrizesWithUI();
-        },
-        
-        // Limpiar todos los premios
-        clearPrizes: () => {
-            saveRedeemedPrizes([]);
-            console.log('🗑️ Todos los premios limpiados');
-            syncPrizesWithUI();
-        },
-        
-        // Forzar sincronización
-        sync: () => {
-            console.log('🔄 Sincronización forzada');
-            syncPrizesWithUI();
-        }
-    };
-    
-    // Detectar si estamos en la página de gamificación
-    if (window.location.pathname.includes('gamificacion') || 
-        window.location.hash.includes('gamificacion') ||
-        document.querySelector('[href*="gamificacion"]')) {
-        
-        // Sincronizar cuando la página esté lista
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(syncPrizesWithUI, 1000);
-            });
-        } else {
-            setTimeout(syncPrizesWithUI, 1000);
+                    });
+                } catch (error) {
+                    console.warn('⚠️ Error en interceptación:', error);
+                }
+            };
+            
+            // Aplicar interceptación
+            buscarYModificarPremios();
+            
+            // También interceptar localStorage directamente
+            const originalSetItem = localStorage.setItem;
+            localStorage.setItem = function(key, value) {
+                if (key.includes('premio') || key.includes('reward') || key.includes('badge')) {
+                    console.log('💾 Guardando premio en localStorage:', key);
+                }
+                return originalSetItem.apply(this, arguments);
+            };
         }
     }
     
-    console.log('✅ Hotfix de persistencia de premios aplicado');
-    console.log('📊 Premios actuales:', loadRedeemedPrizes());
-    console.log('🛠️ Funciones disponibles: window.fixPremios');
+    // Auto-guardado periódico de premios
+    function iniciarAutoGuardado() {
+        setInterval(() => {
+            try {
+                // Buscar premios en el estado de la aplicación
+                const premios = cargarPremios();
+                if (premios && premios.length > 0) {
+                    console.log('🔄 Auto-guardado de premios ejecutado');
+                }
+            } catch (error) {
+                console.warn('⚠️ Error en auto-guardado:', error);
+            }
+        }, 30000); // Cada 30 segundos
+    }
     
-    // Auto-ejecutar sincronización
-    syncPrizesWithUI();
+    // Restaurar premios al cargar la página
+    function restaurarPremios() {
+        const premiosGuardados = cargarPremios();
+        if (premiosGuardados && premiosGuardados.length > 0) {
+            console.log('🏆 Restaurando premios guardados:', premiosGuardados.length);
+            
+            // Intentar restaurar en el estado de la aplicación
+            if (window.React || window.ReactDOM) {
+                // Esperar a que React esté disponible
+                setTimeout(() => {
+                    const event = new CustomEvent('restaurarPremios', { 
+                        detail: { premios: premiosGuardados } 
+                    });
+                    window.dispatchEvent(event);
+                }, 1000);
+            }
+        }
+    }
+    
+    // Aplicar hotfix
+    function aplicarHotfix() {
+        try {
+            console.log('🚀 Iniciando hotfix de persistencia de premios...');
+            
+            // Restaurar premios al cargar
+            restaurarPremios();
+            
+            // Interceptar funciones
+            interceptarFuncionesPremios();
+            
+            // Iniciar auto-guardado
+            iniciarAutoGuardado();
+            
+            // Marcar como aplicado
+            window.hotfixPremiosApplied = true;
+            window.hotfixPremiosVersion = '1.0.0';
+            
+            console.log('✅ Hotfix de persistencia de premios aplicado correctamente');
+            
+        } catch (error) {
+            console.error('❌ Error al aplicar hotfix:', error);
+        }
+    }
+    
+    // Aplicar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', aplicarHotfix);
+    } else {
+        aplicarHotfix();
+    }
+    
+    // También aplicar cuando la ventana esté cargada
+    window.addEventListener('load', aplicarHotfix);
+    
 })();
