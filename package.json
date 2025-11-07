@@ -1,7 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "capsulas-observauto",
   "private": true,
-  "version": "0.3.0",
+  "version": "1.0.0",
+  "description": "Cápsulas ObservAuto - Micro-lecciones para el observador automotriz",
+  "author": "MiniMax Agent",
   "type": "module",
   "scripts": {
     "dev": "vite",
