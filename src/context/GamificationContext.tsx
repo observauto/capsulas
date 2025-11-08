@@ -220,12 +220,34 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         'userProfile'    // perfil del usuario
       ];
       
+      const shouldPreserve = (key: string | null): boolean => {
+        if (!key) return true;
+
+        if (REAL_DATA_KEYS.includes(key)) {
+          return true;
+        }
+
+        const normalized = key.toLowerCase();
+
+        // Claves críticas de autenticación de Supabase (tokens y metadatos)
+        if (normalized.includes('supabase') || key.startsWith('sb-')) {
+          return true;
+        }
+
+        // Código de acceso de la plataforma
+        if (normalized === 'access_code_valid') {
+          return true;
+        }
+
+        return false;
+      };
+
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && !REAL_DATA_KEYS.includes(key)) {
+        if (!shouldPreserve(key)) {
           // Solo eliminar claves que NO sean datos reales del usuario
-          keysToRemove.push(key);
+          keysToRemove.push(key as string);
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
