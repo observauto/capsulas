@@ -1,9 +1,7 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
 import { loadGamificationDataFromSupabase, updateBadgesInSupabase, updatePointsInSupabase } from "@/lib/gamification-sync";
-
-const KEY_POINTS = "oa_points";
-const KEY_BADGES = "oa_badges";
+import { KEY_BADGES, KEY_POINTS } from "@/lib/gamification-keys";
 
 const MILESTONE_BADGES = [
   { code: "beginner", threshold: 100 },
@@ -519,4 +517,3 @@ export function useGamification() {
   return ctx;
 }
 
-export { KEY_POINTS, KEY_BADGES };

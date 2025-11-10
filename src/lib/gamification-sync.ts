@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { KEY_POINTS, KEY_BADGES } from '@/context/GamificationContext';
+import { KEY_BADGES, KEY_POINTS } from './gamification-keys';
 
 type AchievementRecord = {
   id: string;
