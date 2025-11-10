@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
-import { loadGamificationDataFromSupabase, updatePointsInSupabase } from "@/lib/gamification-sync";
+import { loadGamificationDataFromSupabase, updateBadgesInSupabase, updatePointsInSupabase } from "@/lib/gamification-sync";
 
 const KEY_POINTS = "oa_points";
 const KEY_BADGES = "oa_badges";
@@ -198,6 +198,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     }
   }, [user, isLoadingFromDB]);
 
+  const syncBadgesToSupabase = React.useCallback(async (currentBadges: string[]) => {
+    if (user?.id && !isLoadingFromDB) {
+      console.log('[GAMIFICATION] Sincronizando badges a Supabase:', currentBadges);
+      await updateBadgesInSupabase(user.id, currentBadges);
+    }
+  }, [user, isLoadingFromDB]);
+
   // Flag para evitar procesamiento de eventos de storage durante actualizaciones manuales
   const isManualUpdate = React.useRef(false);
   
@@ -206,6 +213,18 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
     let cancelled = false;
     let timeoutId: NodeJS.Timeout;
+
+    const applyLocalStorageState = () => {
+      const lsPoints = readPointsLS();
+      const lsBadges = readBadgesLS();
+      const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
+      console.log('[GAMIFICATION] Datos desde localStorage:', { lsPoints, lsBadges });
+
+      isManualUpdate.current = true;
+      setPointsState(lsPoints);
+      setBadgesState(normalizedBadges);
+      isManualUpdate.current = false;
+    };
 
     const bootstrap = async () => {
       // SOLO limpiar datos falsos de gamificación, NO tocar puntos reales
@@ -220,12 +239,34 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         'userProfile'    // perfil del usuario
       ];
       
+      const shouldPreserve = (key: string | null): boolean => {
+        if (!key) return true;
+
+        if (REAL_DATA_KEYS.includes(key)) {
+          return true;
+        }
+
+        const normalized = key.toLowerCase();
+
+        // Claves críticas de autenticación de Supabase (tokens y metadatos)
+        if (normalized.includes('supabase') || key.startsWith('sb-')) {
+          return true;
+        }
+
+        // Código de acceso de la plataforma
+        if (normalized === 'access_code_valid') {
+          return true;
+        }
+
+        return false;
+      };
+
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && !REAL_DATA_KEYS.includes(key)) {
+        if (!shouldPreserve(key)) {
           // Solo eliminar claves que NO sean datos reales del usuario
-          keysToRemove.push(key);
+          keysToRemove.push(key as string);
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -242,29 +283,27 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (user?.id) {
         console.log('[GAMIFICATION] Usuario autenticado, cargando desde Supabase...');
         setIsLoadingFromDB(true);
-        
+
         try {
           const supabaseData = await loadGamificationDataFromSupabase(user.id);
           if (cancelled) return;
 
-          console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
-          const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
-          
-          isManualUpdate.current = true;
-          setPointsState(supabaseData.points);
-          setBadgesState(normalizedBadges);
-          isManualUpdate.current = false;
+          if (supabaseData) {
+            console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
+            const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
+
+            isManualUpdate.current = true;
+            setPointsState(supabaseData.points);
+            setBadgesState(normalizedBadges);
+            isManualUpdate.current = false;
+          } else {
+            console.warn('[GAMIFICATION] Supabase sin datos o con error, usando fallback de localStorage');
+            applyLocalStorageState();
+          }
         } catch (error) {
           console.error('[GAMIFICATION] Error cargando desde Supabase, usando fallback localStorage:', error);
           // Fallback a localStorage si falla Supabase
-          const lsPoints = readPointsLS();
-          const lsBadges = readBadgesLS();
-          const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
-          
-          isManualUpdate.current = true;
-          setPointsState(lsPoints);
-          setBadgesState(normalizedBadges);
-          isManualUpdate.current = false;
+          applyLocalStorageState();
         } finally {
           setIsLoadingFromDB(false);
         }
@@ -290,15 +329,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      const lsPoints = readPointsLS();
-      const lsBadges = readBadgesLS();
-      const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
-      console.log('[GAMIFICATION] Datos desde localStorage:', { lsPoints, lsBadges });
-      
-      isManualUpdate.current = true;
-      setPointsState(lsPoints);
-      setBadgesState(normalizedBadges);
-      isManualUpdate.current = false;
+      applyLocalStorageState();
     };
 
     bootstrap();
@@ -335,8 +366,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     // Sincronizar a localStorage y Supabase solo cuando no estamos cargando desde DB
     isManualUpdate.current = true;
     syncStorage(points, badges);
+    void syncBadgesToSupabase(badges);
     isManualUpdate.current = false;
-  }, [points, badges]); // REMOVIDO: syncStorage de las dependencias
+  }, [points, badges, isLoadingFromDB, syncBadgesToSupabase, syncStorage]);
 
   const setPoints = React.useCallback((value: number) => {
     const nextPoints = Math.max(0, value);
