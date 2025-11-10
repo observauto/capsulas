@@ -202,62 +202,54 @@ async function ensureBadges(userId: string, desiredBadges: string[]): Promise<nu
   return rows.length;
 }
 
+type PersistMetadata = { email?: string | null; name?: string | null };
+
+type PersistOptions = {
+  /**
+   * Indica si ya existe un perfil remoto para evitar sobrescribir campos
+   * sensibles (por ejemplo, el role) al realizar un upsert.
+   */
+  knownProfileExists?: boolean;
+};
+
 export async function persistGamificationProgress(
   userId: string,
   snapshot: GamificationSnapshot,
-  metadata?: { email?: string | null; name?: string | null },
+  metadata?: PersistMetadata,
+  options?: PersistOptions,
 ): Promise<void> {
   const points = normalizePoints(snapshot.points);
   const badges = normalizeBadges(snapshot.badges);
   const timestamp = new Date().toISOString();
   const level = Math.max(1, Math.floor(points / 100) + 1);
 
-  const updatePayload: Record<string, string | number> = {
+  const basePayload: Record<string, string | number | null> = {
+    user_id: userId,
     points,
     level,
     updated_at: timestamp,
   };
 
-  const { error: updateError, data: updatedRows } = await supabase
-    .from("user_profiles")
-    .update(updatePayload)
-    .eq("user_id", userId)
-    .select("user_id");
-
-  let shouldInsert = false;
-
-  if (updateError) {
-    console.error("[GAMIFICATION] Error actualizando perfil existente:", updateError);
-    shouldInsert = true;
-  } else if (!updatedRows || updatedRows.length === 0) {
-    shouldInsert = true;
+  if (!options?.knownProfileExists) {
+    basePayload.role = "end_user";
   }
 
-  if (shouldInsert) {
-    const insertPayload: Record<string, string | number> = {
-      user_id: userId,
-      points,
-      level,
-      created_at: timestamp,
-      updated_at: timestamp,
-      role: "end_user",
-    };
+  if (metadata?.email) {
+    basePayload.email = metadata.email;
+  }
 
-    if (metadata?.email) {
-      insertPayload.email = metadata.email;
-    }
+  const trimmedName = metadata?.name?.trim();
+  if (trimmedName) {
+    basePayload.name = trimmedName;
+  }
 
-    const trimmedName = metadata?.name?.trim();
-    if (trimmedName) {
-      insertPayload.name = trimmedName;
-    }
+  const { error: upsertError } = await supabase
+    .from("user_profiles")
+    .upsert(basePayload, { onConflict: "user_id" });
 
-    const { error: insertError } = await supabase.from("user_profiles").insert(insertPayload);
-
-    if (insertError) {
-      console.error("[GAMIFICATION] Error creando perfil de usuario:", insertError);
-      throw insertError;
-    }
+  if (upsertError) {
+    console.error("[GAMIFICATION] Error guardando perfil de usuario:", upsertError);
+    throw upsertError;
   }
 
   await ensureBadges(userId, badges);
@@ -274,13 +266,20 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
     const mergedPoints = Math.max(remotePoints, localSnapshot.points);
     const mergedBadges = normalizeBadges([...remoteBadges, ...localSnapshot.badges]);
 
-    await persistGamificationProgress(userId, {
-      points: mergedPoints,
-      badges: mergedBadges,
-    }, {
-      email: userEmail,
-      name: userEmail?.split("@")[0] ?? null,
-    });
+    await persistGamificationProgress(
+      userId,
+      {
+        points: mergedPoints,
+        badges: mergedBadges,
+      },
+      {
+        email: userEmail,
+        name: userEmail?.split("@")[0] ?? null,
+      },
+      {
+        knownProfileExists: Boolean(remoteSnapshot),
+      },
+    );
 
     return {
       success: true,

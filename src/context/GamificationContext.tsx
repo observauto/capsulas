@@ -72,6 +72,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
   const isBootstrappingRef = React.useRef(false);
   const lastPersistedRef = React.useRef<{ points: number; badgeKey: string } | null>(null);
+  const remoteProfileExistsRef = React.useRef(false);
 
   const applySnapshot = React.useCallback((snapshot: GamificationSnapshot) => {
     setPointsState(snapshot.points);
@@ -82,6 +83,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     let cancelled = false;
     const localStored = readLocalGamificationData();
     const localSnapshot = mergeSnapshots(localStored.points, localStored.badges);
+    remoteProfileExistsRef.current = false;
 
     const bootstrap = async () => {
       isBootstrappingRef.current = true;
@@ -96,6 +98,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
           }
 
           if (remoteSnapshot) {
+            remoteProfileExistsRef.current = true;
             mergedPoints = Math.max(remoteSnapshot.points, mergedPoints);
             mergedBadges = ensureMilestoneBadges(
               mergedPoints,
@@ -111,6 +114,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
                   user.id,
                   { points: mergedPoints, badges: mergedBadges },
                   { email: user.email, name: user.name },
+                  { knownProfileExists: true },
                 );
               } catch (error) {
                 console.error("[GAMIFICATION] Error persistiendo progreso fusionado:", error);
@@ -122,7 +126,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
                 user.id,
                 { points: mergedPoints, badges: mergedBadges },
                 { email: user.email, name: user.name },
+                { knownProfileExists: false },
               );
+              remoteProfileExistsRef.current = true;
             } catch (error) {
               console.error("[GAMIFICATION] Error creando progreso remoto inicial:", error);
             }
@@ -191,10 +197,12 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       user.id,
       snapshot,
       { email: user.email, name: user.name },
+      { knownProfileExists: remoteProfileExistsRef.current },
     )
       .then(() => {
         if (!cancelled) {
           lastPersistedRef.current = { points: snapshot.points, badgeKey };
+          remoteProfileExistsRef.current = true;
         }
       })
       .catch(error => {
@@ -284,8 +292,14 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
     if (user?.id) {
       try {
-        await persistGamificationProgress(user.id, snapshot, { email: user.email, name: user.name });
+        await persistGamificationProgress(
+          user.id,
+          snapshot,
+          { email: user.email, name: user.name },
+          { knownProfileExists: remoteProfileExistsRef.current },
+        );
         lastPersistedRef.current = { points: snapshot.points, badgeKey: computeBadgeKey(snapshot.badges) };
+        remoteProfileExistsRef.current = true;
       } catch (error) {
         console.error("[GAMIFICATION] Error reseteando progreso:", error);
       }
