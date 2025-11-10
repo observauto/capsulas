@@ -85,43 +85,71 @@ export function clearLocalGamificationData(): void {
   }
 }
 
-export async function loadGamificationDataFromSupabase(
-  userId: string,
-): Promise<(GamificationSnapshot & { level: number }) | null> {
+type RemoteGamificationLoad =
+  | {
+      status: "success";
+      snapshot: (GamificationSnapshot & { level: number }) | null;
+      profileExists: boolean;
+    }
+  | {
+      status: "error";
+      error: string;
+    };
+
+export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> {
   try {
-    const [profileResult, achievementsResult] = await Promise.all([
-      supabase
-        .from("user_profiles")
-        .select("points, level")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabase
-        .from("user_achievements")
-        .select("achievement:achievements(achievement_code)")
-        .eq("user_id", userId),
-    ]);
+    const { data: profileData, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("points, level")
+      .eq("user_id", userId)
+      .limit(1);
 
-    if (profileResult.error) {
-      console.error("[GAMIFICATION] Error cargando perfil de Supabase:", profileResult.error);
-      return null;
+    if (profileError) {
+      console.error("[GAMIFICATION] Error cargando perfil de Supabase:", profileError);
+      return {
+        status: "error",
+        error: profileError.message || "Unknown Supabase profile error",
+      };
     }
 
-    if (achievementsResult.error) {
-      console.error("[GAMIFICATION] Error cargando logros de Supabase:", achievementsResult.error);
-      return null;
+    const profileRow = profileData?.[0] ?? null;
+
+    const { data: achievementsData, error: achievementsError } = await supabase
+      .from("user_achievements")
+      .select("achievement:achievements(achievement_code)")
+      .eq("user_id", userId);
+
+    if (achievementsError) {
+      console.error("[GAMIFICATION] Error cargando logros de Supabase:", achievementsError);
     }
 
-    const badges =
-      achievementsResult.data?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) || [];
+    const badges = achievementsError
+      ? []
+      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) || [];
+
+    if (!profileRow) {
+      return {
+        status: "success",
+        snapshot: null,
+        profileExists: false,
+      };
+    }
 
     return {
-      points: normalizePoints(profileResult.data?.points ?? 0),
-      badges,
-      level: normalizePoints(profileResult.data?.level ?? 1) || 1,
+      status: "success",
+      snapshot: {
+        points: normalizePoints(profileRow.points ?? 0),
+        badges,
+        level: normalizePoints(profileRow.level ?? 1) || 1,
+      },
+      profileExists: true,
     };
   } catch (error) {
     console.error("[GAMIFICATION] Error general leyendo Supabase:", error);
-    return null;
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown Supabase error",
+    };
   }
 }
 
@@ -258,8 +286,19 @@ export async function persistGamificationProgress(
 export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
     const localSnapshot = readLocalGamificationData();
-    const remoteSnapshot = await loadGamificationDataFromSupabase(userId);
+    const remoteResult = await loadGamificationDataFromSupabase(userId);
 
+    if (remoteResult.status === "error") {
+      return {
+        success: false,
+        pointsMigrated: 0,
+        badgesMigrated: 0,
+        finalPoints: localSnapshot.points,
+        error: remoteResult.error,
+      };
+    }
+
+    const remoteSnapshot = remoteResult.snapshot;
     const remotePoints = remoteSnapshot?.points ?? 0;
     const remoteBadges = remoteSnapshot?.badges ?? [];
 
@@ -277,7 +316,7 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
         name: userEmail?.split("@")[0] ?? null,
       },
       {
-        knownProfileExists: Boolean(remoteSnapshot),
+        knownProfileExists: remoteResult.profileExists,
       },
     );
 

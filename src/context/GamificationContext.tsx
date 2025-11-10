@@ -92,13 +92,16 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
       if (user?.id) {
         try {
-          const remoteSnapshot = await loadGamificationDataFromSupabase(user.id);
+          const remoteResult = await loadGamificationDataFromSupabase(user.id);
           if (cancelled) {
             return;
           }
 
-          if (remoteSnapshot) {
-            remoteProfileExistsRef.current = true;
+          if (remoteResult.status === "error") {
+            console.error("[GAMIFICATION] No se pudo cargar progreso remoto:", remoteResult.error);
+          } else if (remoteResult.snapshot) {
+            remoteProfileExistsRef.current = remoteResult.profileExists;
+            const remoteSnapshot = remoteResult.snapshot;
             mergedPoints = Math.max(remoteSnapshot.points, mergedPoints);
             mergedBadges = ensureMilestoneBadges(
               mergedPoints,
@@ -121,6 +124,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
               }
             }
           } else {
+            remoteProfileExistsRef.current = remoteResult.profileExists;
             try {
               await persistGamificationProgress(
                 user.id,
