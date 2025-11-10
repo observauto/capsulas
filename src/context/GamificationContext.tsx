@@ -78,9 +78,6 @@ function clearLocalStorage() {
   if (!isBrowser()) return;
   try {
     // Limpiar claves específicas de gamificación
-    window.localStorage.removeItem(KEY_POINTS);
-    window.localStorage.removeItem(KEY_BADGES);
-    
     // Identificar qué claves eliminar (solo las de gamificación, NO autenticación)
     const keysToRemove = [];
     for (let i = 0; i < window.localStorage.length; i++) {
@@ -297,11 +294,17 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
             if (supabaseData) {
               console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
-              const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
+              const normalizedSupabaseBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
+
+              const mergedPoints = Math.max(supabaseData.points, currentPoints);
+              const mergedBadges = ensureMilestoneBadges(
+                mergedPoints,
+                Array.from(new Set([...normalizedSupabaseBadges, ...currentBadges])),
+              );
 
               isManualUpdate.current = true;
-              setPointsState(supabaseData.points);
-              setBadgesState(normalizedBadges);
+              setPointsState(mergedPoints);
+              setBadgesState(mergedBadges);
               isManualUpdate.current = false;
             } else {
               console.warn('[GAMIFICATION] Supabase sin datos o con error, usando fallback de localStorage');
