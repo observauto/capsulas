@@ -156,6 +156,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const [points, setPointsState] = React.useState(0);
   const [badges, setBadgesState] = React.useState<string[]>([]);
   const [isLoadingFromDB, setIsLoadingFromDB] = React.useState(true);
+  const loadingRef = React.useRef(isLoadingFromDB);
+
+  React.useEffect(() => {
+    loadingRef.current = isLoadingFromDB;
+  }, [isLoadingFromDB]);
 
   const syncMilestones = React.useCallback((nextPoints: number) => {
     setBadgesState(prev => {
@@ -192,21 +197,21 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
   // Sincronizar puntos con Supabase cuando el usuario está autenticado
   const syncPointsToSupabase = React.useCallback(async (newPoints: number) => {
-    if (user?.id && !isLoadingFromDB) {
+    if (user?.id && !loadingRef.current) {
       console.log('[GAMIFICATION] Sincronizando puntos a Supabase:', newPoints);
       await updatePointsInSupabase(user.id, newPoints, {
         email: user.email,
         name: user.name,
       });
     }
-  }, [user, isLoadingFromDB]);
+  }, [user]);
 
   const syncBadgesToSupabase = React.useCallback(async (currentBadges: string[]) => {
-    if (user?.id && !isLoadingFromDB) {
+    if (user?.id && !loadingRef.current) {
       console.log('[GAMIFICATION] Sincronizando badges a Supabase:', currentBadges);
       await updateBadgesInSupabase(user.id, currentBadges);
     }
-  }, [user, isLoadingFromDB]);
+  }, [user]);
 
   // Flag para evitar procesamiento de eventos de storage durante actualizaciones manuales
   const isManualUpdate = React.useRef(false);
@@ -367,15 +372,15 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     isManualUpdate.current = true;
     syncStorage(points, badges);
     void syncBadgesToSupabase(badges);
+    void syncPointsToSupabase(points);
     isManualUpdate.current = false;
-  }, [points, badges, isLoadingFromDB, syncBadgesToSupabase, syncStorage]);
+  }, [points, badges, isLoadingFromDB, syncBadgesToSupabase, syncPointsToSupabase, syncStorage]);
 
   const setPoints = React.useCallback((value: number) => {
     const nextPoints = Math.max(0, value);
     setPointsState(nextPoints);
     syncMilestones(nextPoints);
-    syncPointsToSupabase(nextPoints);
-  }, [syncMilestones, syncPointsToSupabase]);
+  }, [syncMilestones]);
 
   const setBadges = React.useCallback((value: string[]) => {
     setBadgesState(prev => {
@@ -395,16 +400,20 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     }
     
     console.log('[GAMIFICATION] Agregando puntos:', delta);
+    let updatedPoints: number | null = null;
     setPointsState(prev => {
       const nextPoints = Math.max(0, prev + delta);
       if (nextPoints !== prev) {
-        syncMilestones(nextPoints);
-        // Desincronizar para evitar bucle
-        setTimeout(() => syncPointsToSupabase(nextPoints), 100);
+        updatedPoints = nextPoints;
+        return nextPoints;
       }
-      return nextPoints;
+      return prev;
     });
-  }, [syncMilestones, syncPointsToSupabase, isSyncing, isLoadingFromDB]);
+
+    if (updatedPoints !== null) {
+      syncMilestones(updatedPoints);
+    }
+  }, [syncMilestones, isSyncing, isLoadingFromDB]);
 
   const subtractPoints = React.useCallback((delta: number) => {
     if (!Number.isFinite(delta) || delta <= 0 || isSyncing || isLoadingFromDB) {
