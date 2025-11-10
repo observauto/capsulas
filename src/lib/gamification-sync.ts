@@ -98,11 +98,11 @@ type RemoteGamificationLoad =
 
 export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> {
   try {
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileRow, error: profileError } = await supabase
       .from("user_profiles")
       .select("points, level")
       .eq("user_id", userId)
-      .limit(1);
+      .maybeSingle();
 
     if (profileError) {
       console.error("[GAMIFICATION] Error cargando perfil de Supabase:", profileError);
@@ -111,8 +111,6 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
         error: profileError.message || "Unknown Supabase profile error",
       };
     }
-
-    const profileRow = profileData?.[0] ?? null;
 
     const { data: achievementsData, error: achievementsError } = await supabase
       .from("user_achievements")
@@ -139,7 +137,7 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
       status: "success",
       snapshot: {
         points: normalizePoints(profileRow.points ?? 0),
-        badges,
+        badges: normalizeBadges(badges),
         level: normalizePoints(profileRow.level ?? 1) || 1,
       },
       profileExists: true,
@@ -273,7 +271,9 @@ export async function persistGamificationProgress(
 
   const { error: upsertError } = await supabase
     .from("user_profiles")
-    .upsert(basePayload, { onConflict: "user_id" });
+    .upsert(basePayload, { onConflict: "user_id", ignoreDuplicates: false })
+    .select("user_id")
+    .maybeSingle();
 
   if (upsertError) {
     console.error("[GAMIFICATION] Error guardando perfil de usuario:", upsertError);
@@ -286,6 +286,11 @@ export async function persistGamificationProgress(
 export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
     const localSnapshot = readLocalGamificationData();
+    const normalizedLocal: GamificationSnapshot = {
+      points: normalizePoints(localSnapshot.points),
+      badges: normalizeBadges(localSnapshot.badges),
+    };
+
     const remoteResult = await loadGamificationDataFromSupabase(userId);
 
     if (remoteResult.status === "error") {
@@ -293,24 +298,31 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
         success: false,
         pointsMigrated: 0,
         badgesMigrated: 0,
-        finalPoints: localSnapshot.points,
+        finalPoints: normalizedLocal.points,
         error: remoteResult.error,
       };
     }
 
-    const remoteSnapshot = remoteResult.snapshot;
+    const remoteSnapshot = remoteResult.snapshot
+      ? {
+          points: normalizePoints(remoteResult.snapshot.points),
+          badges: normalizeBadges(remoteResult.snapshot.badges),
+        }
+      : null;
+
     const remotePoints = remoteSnapshot?.points ?? 0;
     const remoteBadges = remoteSnapshot?.badges ?? [];
 
-    const mergedPoints = Math.max(remotePoints, localSnapshot.points);
-    const mergedBadges = normalizeBadges([...remoteBadges, ...localSnapshot.badges]);
+    const finalSnapshot: GamificationSnapshot = remoteSnapshot
+      ? {
+          points: Math.max(remoteSnapshot.points, normalizedLocal.points),
+          badges: normalizeBadges([...remoteSnapshot.badges, ...normalizedLocal.badges]),
+        }
+      : normalizedLocal;
 
     await persistGamificationProgress(
       userId,
-      {
-        points: mergedPoints,
-        badges: mergedBadges,
-      },
+      finalSnapshot,
       {
         email: userEmail,
         name: userEmail?.split("@")[0] ?? null,
@@ -320,11 +332,13 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
       },
     );
 
+    const migratedBadges = finalSnapshot.badges.filter(code => !remoteBadges.includes(code)).length;
+
     return {
       success: true,
-      pointsMigrated: Math.max(0, mergedPoints - remotePoints),
-      badgesMigrated: Math.max(0, mergedBadges.length - remoteBadges.length),
-      finalPoints: mergedPoints,
+      pointsMigrated: Math.max(0, finalSnapshot.points - remotePoints),
+      badgesMigrated: migratedBadges,
+      finalPoints: finalSnapshot.points,
     };
   } catch (error) {
     console.error("[GAMIFICATION] Error durante sincronización completa:", error);

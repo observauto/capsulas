@@ -101,7 +101,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
             console.error("[GAMIFICATION] No se pudo cargar progreso remoto:", remoteResult.error);
           } else if (remoteResult.snapshot) {
             remoteProfileExistsRef.current = remoteResult.profileExists;
-            const remoteSnapshot = remoteResult.snapshot;
+            const remoteSnapshot = mergeSnapshots(
+              remoteResult.snapshot.points,
+              remoteResult.snapshot.badges,
+            );
             mergedPoints = Math.max(remoteSnapshot.points, mergedPoints);
             mergedBadges = ensureMilestoneBadges(
               mergedPoints,
@@ -161,6 +164,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       console.error("[GAMIFICATION] Error durante bootstrap:", error);
       if (!cancelled) {
         applySnapshot(localSnapshot);
+        writeLocalGamificationData(localSnapshot);
         setHydrated(true);
         isBootstrappingRef.current = false;
         lastPersistedRef.current = {
