@@ -146,32 +146,17 @@ export async function forceSyncToSupabase(userId: string, userEmail: string): Pr
     console.log('[EMERGENCY] Puntos finales:', finalPoints);
     console.log('[EMERGENCY] Nuevo nivel:', newLevel);
 
-    // PASO 3: UPSERT - Crear o actualizar perfil
-    console.log('[EMERGENCY] Ejecutando UPSERT del perfil...');
-    
-    const { data: upsertedProfile, error: upsertError } = await supabase
-      .from('user_profiles')
-      .upsert({
-        user_id: userId,
-        email: userEmail,
-        name: userEmail.split('@')[0],
-        role: 'end_user',
-        points: finalPoints,
-        level: newLevel,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
+    // PASO 3: Persistir puntos garantizando la existencia del perfil
+    console.log('[EMERGENCY] Persistiendo puntos del perfil en Supabase...');
 
-    console.log('[EMERGENCY] Resultado UPSERT:', upsertedProfile);
-    console.log('[EMERGENCY] Error UPSERT:', upsertError);
+    const persisted = await updatePointsInSupabase(userId, finalPoints, {
+      email: userEmail,
+      name: userEmail.split('@')[0],
+    });
 
-    if (upsertError) {
-      console.error('[EMERGENCY] ERROR CRÍTICO en UPSERT:', upsertError);
-      throw new Error(`UPSERT failed: ${upsertError.message}`);
+    if (!persisted) {
+      console.error('[EMERGENCY] ERROR CRÍTICO: No se pudieron guardar los puntos en Supabase');
+      throw new Error('Points persistence failed');
     }
 
     // PASO 4: VERIFICACIÓN - Leer el perfil de nuevo para confirmar
@@ -419,32 +404,78 @@ export async function updatePointsInSupabase(
   try {
     const level = Math.floor(points / 100) + 1;
     const timestamp = new Date().toISOString();
+    const email = options?.email?.trim();
+    const providedName = options?.name?.trim();
+    const derivedName = providedName || email?.split('@')[0] || undefined;
 
-    const payload: Record<string, string | number> = {
-      user_id: userId,
+    const updatePayload: Record<string, string | number> = {
       points,
       level,
       updated_at: timestamp,
       role: 'end_user',
     };
 
-    const email = options?.email ?? undefined;
     if (email) {
-      payload.email = email;
+      updatePayload.email = email;
     }
 
-    const explicitName = options?.name ?? email?.split('@')[0];
-    if (explicitName) {
-      payload.name = explicitName;
+    if (derivedName) {
+      updatePayload.name = derivedName;
     }
 
-    const { error } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from('user_profiles')
-      .upsert(payload, { onConflict: 'user_id', ignoreDuplicates: false });
+      .update(updatePayload)
+      .eq('user_id', userId)
+      .select('user_id');
 
-    if (error) {
-      console.error('Error upserting points profile:', error);
-      return false;
+    if (updateError) {
+      console.error('Error updating points profile:', updateError);
+    }
+
+    let shouldInsert = Boolean(updateError);
+
+    if (!shouldInsert && (!updatedRows || updatedRows.length === 0)) {
+      const { data: existingRow, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error verifying profile after update:', checkError);
+        shouldInsert = true;
+      } else {
+        shouldInsert = !existingRow;
+      }
+    }
+
+    if (shouldInsert) {
+      const insertPayload: Record<string, string | number> = {
+        user_id: userId,
+        points,
+        level,
+        created_at: timestamp,
+        updated_at: timestamp,
+        role: 'end_user',
+      };
+
+      if (email) {
+        insertPayload.email = email;
+      }
+
+      if (derivedName) {
+        insertPayload.name = derivedName;
+      }
+
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert(insertPayload);
+
+      if (insertError) {
+        console.error('Error inserting points profile:', insertError);
+        return false;
+      }
     }
 
     return true;
