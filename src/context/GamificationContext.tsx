@@ -155,7 +155,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const { user, isSyncing } = useAuth();  // NUEVO: Leer flag isSyncing
   const [points, setPointsState] = React.useState(0);
   const [badges, setBadgesState] = React.useState<string[]>([]);
-  const [isLoadingFromDB, setIsLoadingFromDB] = React.useState(false);
+  const [isLoadingFromDB, setIsLoadingFromDB] = React.useState(true);
 
   const syncMilestones = React.useCallback((nextPoints: number) => {
     setBadgesState(prev => {
@@ -230,6 +230,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     };
 
     const bootstrap = async () => {
+      setIsLoadingFromDB(true);
+
       // SOLO limpiar datos falsos de gamificación, NO tocar puntos reales
       const currentPoints = readPointsLS();
       const currentBadges = readBadgesLS();
@@ -285,8 +287,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       // Si el usuario está autenticado, cargar desde Supabase
       if (user?.id) {
         console.log('[GAMIFICATION] Usuario autenticado, cargando desde Supabase...');
-        setIsLoadingFromDB(true);
-
         try {
           const supabaseData = await loadGamificationDataFromSupabase(user.id);
           if (cancelled) return;
@@ -307,8 +307,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
           console.error('[GAMIFICATION] Error cargando desde Supabase, usando fallback localStorage:', error);
           // Fallback a localStorage si falla Supabase
           applyLocalStorageState();
-        } finally {
-          setIsLoadingFromDB(false);
         }
         return;
       }
@@ -333,6 +331,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       }
 
       applyLocalStorageState();
+    } finally {
+      setIsLoadingFromDB(false);
     };
 
     bootstrap();
