@@ -207,6 +207,18 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     let cancelled = false;
     let timeoutId: NodeJS.Timeout;
 
+    const applyLocalStorageState = () => {
+      const lsPoints = readPointsLS();
+      const lsBadges = readBadgesLS();
+      const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
+      console.log('[GAMIFICATION] Datos desde localStorage:', { lsPoints, lsBadges });
+
+      isManualUpdate.current = true;
+      setPointsState(lsPoints);
+      setBadgesState(normalizedBadges);
+      isManualUpdate.current = false;
+    };
+
     const bootstrap = async () => {
       // SOLO limpiar datos falsos de gamificación, NO tocar puntos reales
       const currentPoints = readPointsLS();
@@ -264,29 +276,27 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (user?.id) {
         console.log('[GAMIFICATION] Usuario autenticado, cargando desde Supabase...');
         setIsLoadingFromDB(true);
-        
+
         try {
           const supabaseData = await loadGamificationDataFromSupabase(user.id);
           if (cancelled) return;
 
-          console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
-          const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
-          
-          isManualUpdate.current = true;
-          setPointsState(supabaseData.points);
-          setBadgesState(normalizedBadges);
-          isManualUpdate.current = false;
+          if (supabaseData) {
+            console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
+            const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
+
+            isManualUpdate.current = true;
+            setPointsState(supabaseData.points);
+            setBadgesState(normalizedBadges);
+            isManualUpdate.current = false;
+          } else {
+            console.warn('[GAMIFICATION] Supabase sin datos o con error, usando fallback de localStorage');
+            applyLocalStorageState();
+          }
         } catch (error) {
           console.error('[GAMIFICATION] Error cargando desde Supabase, usando fallback localStorage:', error);
           // Fallback a localStorage si falla Supabase
-          const lsPoints = readPointsLS();
-          const lsBadges = readBadgesLS();
-          const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
-          
-          isManualUpdate.current = true;
-          setPointsState(lsPoints);
-          setBadgesState(normalizedBadges);
-          isManualUpdate.current = false;
+          applyLocalStorageState();
         } finally {
           setIsLoadingFromDB(false);
         }
@@ -312,15 +322,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      const lsPoints = readPointsLS();
-      const lsBadges = readBadgesLS();
-      const normalizedBadges = ensureMilestoneBadges(lsPoints, lsBadges);
-      console.log('[GAMIFICATION] Datos desde localStorage:', { lsPoints, lsBadges });
-      
-      isManualUpdate.current = true;
-      setPointsState(lsPoints);
-      setBadgesState(normalizedBadges);
-      isManualUpdate.current = false;
+      applyLocalStorageState();
     };
 
     bootstrap();
