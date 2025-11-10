@@ -215,8 +215,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     if (!isBrowser()) return;
 
     let cancelled = false;
-    let timeoutId: NodeJS.Timeout;
-
     const applyLocalStorageState = () => {
       const lsPoints = readPointsLS();
       const lsBadges = readBadgesLS();
@@ -232,107 +230,109 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     const bootstrap = async () => {
       setIsLoadingFromDB(true);
 
-      // SOLO limpiar datos falsos de gamificación, NO tocar puntos reales
-      const currentPoints = readPointsLS();
-      const currentBadges = readBadgesLS();
-      
-      // CORRECCIÓN PRECISA: Preservar EXACTAMENTE estas claves de datos reales
-      const REAL_DATA_KEYS = [
-        KEY_POINTS,      // 'oa_points' - puntos reales del usuario
-        KEY_BADGES,      // 'oa_badges' - badges reales del usuario
-        'completed_capsules', // cápsulas completadas por el usuario
-        'userProfile'    // perfil del usuario
-      ];
-      
-      const shouldPreserve = (key: string | null): boolean => {
-        if (!key) return true;
+      try {
+        // SOLO limpiar datos falsos de gamificación, NO tocar puntos reales
+        const currentPoints = readPointsLS();
+        const currentBadges = readBadgesLS();
 
-        if (REAL_DATA_KEYS.includes(key)) {
-          return true;
+        // CORRECCIÓN PRECISA: Preservar EXACTAMENTE estas claves de datos reales
+        const REAL_DATA_KEYS = [
+          KEY_POINTS,      // 'oa_points' - puntos reales del usuario
+          KEY_BADGES,      // 'oa_badges' - badges reales del usuario
+          'completed_capsules', // cápsulas completadas por el usuario
+          'userProfile'    // perfil del usuario
+        ];
+
+        const shouldPreserve = (key: string | null): boolean => {
+          if (!key) return true;
+
+          if (REAL_DATA_KEYS.includes(key)) {
+            return true;
+          }
+
+          const normalized = key.toLowerCase();
+
+          // Claves críticas de autenticación de Supabase (tokens y metadatos)
+          if (normalized.includes('supabase') || key.startsWith('sb-')) {
+            return true;
+          }
+
+          // Código de acceso de la plataforma
+          if (normalized === 'access_code_valid') {
+            return true;
+          }
+
+          return false;
+        };
+
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!shouldPreserve(key)) {
+            // Solo eliminar claves que NO sean datos reales del usuario
+            keysToRemove.push(key as string);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log('[GAMIFICATION] Limpieza localStorage completada:', keysToRemove.length, 'claves eliminadas, datos reales preservados');
+
+        // Verificar si había puntos reales guardados
+        if (currentPoints > 0 || currentBadges.length > 0) {
+          console.log('[GAMIFICATION] Puntos/badges reales encontrados:', { currentPoints, currentBadges });
         }
 
-        const normalized = key.toLowerCase();
+        // SIMPLIFICADO: No esperar la sincronización del AuthContext, trabajar independientemente
 
-        // Claves críticas de autenticación de Supabase (tokens y metadatos)
-        if (normalized.includes('supabase') || key.startsWith('sb-')) {
-          return true;
-        }
+        // Si el usuario está autenticado, cargar desde Supabase
+        if (user?.id) {
+          console.log('[GAMIFICATION] Usuario autenticado, cargando desde Supabase...');
+          try {
+            const supabaseData = await loadGamificationDataFromSupabase(user.id);
+            if (cancelled) return;
 
-        // Código de acceso de la plataforma
-        if (normalized === 'access_code_valid') {
-          return true;
-        }
+            if (supabaseData) {
+              console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
+              const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
 
-        return false;
-      };
-
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!shouldPreserve(key)) {
-          // Solo eliminar claves que NO sean datos reales del usuario
-          keysToRemove.push(key as string);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log('[GAMIFICATION] Limpieza localStorage completada:', keysToRemove.length, 'claves eliminadas, datos reales preservados');
-      
-      // Verificar si había puntos reales guardados
-      if (currentPoints > 0 || currentBadges.length > 0) {
-        console.log('[GAMIFICATION] Puntos/badges reales encontrados:', { currentPoints, currentBadges });
-      }
-      
-      // SIMPLIFICADO: No esperar la sincronización del AuthContext, trabajar independientemente
-      
-      // Si el usuario está autenticado, cargar desde Supabase
-      if (user?.id) {
-        console.log('[GAMIFICATION] Usuario autenticado, cargando desde Supabase...');
-        try {
-          const supabaseData = await loadGamificationDataFromSupabase(user.id);
-          if (cancelled) return;
-
-          if (supabaseData) {
-            console.log('[GAMIFICATION] Datos cargados desde Supabase:', supabaseData);
-            const normalizedBadges = ensureMilestoneBadges(supabaseData.points, supabaseData.badges);
-
-            isManualUpdate.current = true;
-            setPointsState(supabaseData.points);
-            setBadgesState(normalizedBadges);
-            isManualUpdate.current = false;
-          } else {
-            console.warn('[GAMIFICATION] Supabase sin datos o con error, usando fallback de localStorage');
+              isManualUpdate.current = true;
+              setPointsState(supabaseData.points);
+              setBadgesState(normalizedBadges);
+              isManualUpdate.current = false;
+            } else {
+              console.warn('[GAMIFICATION] Supabase sin datos o con error, usando fallback de localStorage');
+              applyLocalStorageState();
+            }
+          } catch (error) {
+            console.error('[GAMIFICATION] Error cargando desde Supabase, usando fallback localStorage:', error);
+            // Fallback a localStorage si falla Supabase
             applyLocalStorageState();
           }
-        } catch (error) {
-          console.error('[GAMIFICATION] Error cargando desde Supabase, usando fallback localStorage:', error);
-          // Fallback a localStorage si falla Supabase
-          applyLocalStorageState();
+          return;
         }
-        return;
+
+        // Si no está autenticado, usar localStorage
+        console.log('[GAMIFICATION] Usuario no autenticado, usando localStorage...');
+        const profile = await fetchProfile();
+        if (cancelled) return;
+
+        if (profile) {
+          const nextPoints = Number(profile.points ?? 0);
+          const nextBadges = Array.isArray(profile.badges)
+            ? profile.badges.filter((item): item is string => typeof item === "string")
+            : [];
+          const normalizedBadges = ensureMilestoneBadges(nextPoints, nextBadges);
+
+          isManualUpdate.current = true;
+          setPointsState(nextPoints);
+          setBadgesState(normalizedBadges);
+          isManualUpdate.current = false;
+          return;
+        }
+
+        applyLocalStorageState();
+      } finally {
+        setIsLoadingFromDB(false);
       }
-
-      // Si no está autenticado, usar localStorage
-      console.log('[GAMIFICATION] Usuario no autenticado, usando localStorage...');
-      const profile = await fetchProfile();
-      if (cancelled) return;
-
-      if (profile) {
-        const nextPoints = Number(profile.points ?? 0);
-        const nextBadges = Array.isArray(profile.badges)
-          ? profile.badges.filter((item): item is string => typeof item === "string")
-          : [];
-        const normalizedBadges = ensureMilestoneBadges(nextPoints, nextBadges);
-        
-        isManualUpdate.current = true;
-        setPointsState(nextPoints);
-        setBadgesState(normalizedBadges);
-        isManualUpdate.current = false;
-        return;
-      }
-
-      applyLocalStorageState();
-    } finally {
-      setIsLoadingFromDB(false);
     };
 
     bootstrap();
@@ -356,9 +356,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
     return () => {
       cancelled = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
       window.removeEventListener("storage", onStorage);
     };
   }, [user]);  // SIMPLIFICADO: Solo dependencia en user
