@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
-import { loadGamificationDataFromSupabase, updatePointsInSupabase } from "@/lib/gamification-sync";
+import { loadGamificationDataFromSupabase, updateBadgesInSupabase, updatePointsInSupabase } from "@/lib/gamification-sync";
 
 const KEY_POINTS = "oa_points";
 const KEY_BADGES = "oa_badges";
@@ -198,6 +198,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     }
   }, [user, isLoadingFromDB]);
 
+  const syncBadgesToSupabase = React.useCallback(async (currentBadges: string[]) => {
+    if (user?.id && !isLoadingFromDB) {
+      console.log('[GAMIFICATION] Sincronizando badges a Supabase:', currentBadges);
+      await updateBadgesInSupabase(user.id, currentBadges);
+    }
+  }, [user, isLoadingFromDB]);
+
   // Flag para evitar procesamiento de eventos de storage durante actualizaciones manuales
   const isManualUpdate = React.useRef(false);
   
@@ -359,8 +366,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     // Sincronizar a localStorage y Supabase solo cuando no estamos cargando desde DB
     isManualUpdate.current = true;
     syncStorage(points, badges);
+    void syncBadgesToSupabase(badges);
     isManualUpdate.current = false;
-  }, [points, badges]); // REMOVIDO: syncStorage de las dependencias
+  }, [points, badges, isLoadingFromDB, syncBadgesToSupabase, syncStorage]);
 
   const setPoints = React.useCallback((value: number) => {
     const nextPoints = Math.max(0, value);
