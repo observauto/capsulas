@@ -364,20 +364,60 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
 /**
  * Actualiza puntos en Supabase
  */
-export async function updatePointsInSupabase(userId: string, points: number): Promise<boolean> {
+export async function updatePointsInSupabase(
+  userId: string,
+  points: number,
+  options?: {
+    email?: string | null;
+    name?: string | null;
+  },
+): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const level = Math.floor(points / 100) + 1;
+    const timestamp = new Date().toISOString();
+
+    const { data, error } = await supabase
       .from('user_profiles')
       .update({
         points,
-        level: Math.floor(points / 100) + 1,
-        updated_at: new Date().toISOString()
+        level,
+        updated_at: timestamp,
       })
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select('user_id');
 
     if (error) {
       console.error('Error updating points:', error);
       return false;
+    }
+
+    // If no existing profile was updated, create one on the fly so points persist server-side.
+    if (!data || data.length === 0) {
+      const profilePayload: Record<string, string | number> = {
+        user_id: userId,
+        points,
+        level,
+        updated_at: timestamp,
+        role: 'end_user',
+      };
+
+      if (options?.email) {
+        profilePayload.email = options.email;
+      }
+
+      const inferredName = options?.name || options?.email?.split('@')[0];
+      if (inferredName) {
+        profilePayload.name = inferredName;
+      }
+
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert(profilePayload, { onConflict: 'user_id' });
+
+      if (upsertError) {
+        console.error('Error upserting points profile:', upsertError);
+        return false;
+      }
     }
 
     return true;

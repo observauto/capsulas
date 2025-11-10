@@ -194,7 +194,17 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const syncPointsToSupabase = React.useCallback(async (newPoints: number) => {
     if (user?.id && !isLoadingFromDB) {
       console.log('[GAMIFICATION] Sincronizando puntos a Supabase:', newPoints);
-      await updatePointsInSupabase(user.id, newPoints);
+      await updatePointsInSupabase(user.id, newPoints, {
+        email: user.email,
+        name: user.name,
+      });
+    }
+  }, [user, isLoadingFromDB]);
+
+  const syncBadgesToSupabase = React.useCallback(async (currentBadges: string[]) => {
+    if (user?.id && !isLoadingFromDB) {
+      console.log('[GAMIFICATION] Sincronizando badges a Supabase:', currentBadges);
+      await updateBadgesInSupabase(user.id, currentBadges);
     }
   }, [user, isLoadingFromDB]);
 
