@@ -340,23 +340,33 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
   badges: string[];
   achievements: any[];
   level: number;
-}> {
+} | null> {
   try {
-    // Cargar perfil
-    const { data: profile } = await supabase
+    // Cargar perfil sin lanzar error cuando no existan filas
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('points, level')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    // Cargar achievements
-    const { data: userAchievements } = await supabase
+    if (profileError) {
+      console.error('Error loading user profile from Supabase:', profileError);
+      return null;
+    }
+
+    // Cargar achievements asociados
+    const { data: userAchievements, error: achievementsError } = await supabase
       .from('user_achievements')
       .select(`
         *,
         achievement:achievements(*)
       `)
       .eq('user_id', userId);
+
+    if (achievementsError) {
+      console.error('Error loading user achievements from Supabase:', achievementsError);
+      return null;
+    }
 
     const badges = userAchievements?.map(
       ua => ua.achievement?.achievement_code
@@ -370,12 +380,7 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
     };
   } catch (error) {
     console.error('Error loading gamification data from Supabase:', error);
-    return {
-      points: 0,
-      badges: [],
-      achievements: [],
-      level: 1
-    };
+    return null;
   }
 }
 
