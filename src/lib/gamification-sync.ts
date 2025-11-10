@@ -420,48 +420,31 @@ export async function updatePointsInSupabase(
     const level = Math.floor(points / 100) + 1;
     const timestamp = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .update({
-        points,
-        level,
-        updated_at: timestamp,
-      })
-      .eq('user_id', userId)
-      .select('user_id');
+    const payload: Record<string, string | number> = {
+      user_id: userId,
+      points,
+      level,
+      updated_at: timestamp,
+      role: 'end_user',
+    };
 
-    if (error) {
-      console.error('Error updating points:', error);
-      return false;
+    const email = options?.email ?? undefined;
+    if (email) {
+      payload.email = email;
     }
 
-    // If no existing profile was updated, create one on the fly so points persist server-side.
-    if (!data || data.length === 0) {
-      const profilePayload: Record<string, string | number> = {
-        user_id: userId,
-        points,
-        level,
-        updated_at: timestamp,
-        role: 'end_user',
-      };
+    const explicitName = options?.name ?? email?.split('@')[0];
+    if (explicitName) {
+      payload.name = explicitName;
+    }
 
-      if (options?.email) {
-        profilePayload.email = options.email;
-      }
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'user_id', ignoreDuplicates: false });
 
-      const inferredName = options?.name || options?.email?.split('@')[0];
-      if (inferredName) {
-        profilePayload.name = inferredName;
-      }
-
-      const { error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert(profilePayload, { onConflict: 'user_id' });
-
-      if (upsertError) {
-        console.error('Error upserting points profile:', upsertError);
-        return false;
-      }
+    if (error) {
+      console.error('Error upserting points profile:', error);
+      return false;
     }
 
     return true;
