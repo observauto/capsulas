@@ -82,13 +82,14 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     let cancelled = false;
     const storageUserId = user?.id ?? null;
+    isBootstrappingRef.current = true;
+    setHydrated(false);
     const localStored = readLocalGamificationData(storageUserId);
     const localSnapshot = mergeSnapshots(localStored.points, localStored.badges);
     remoteProfileExistsRef.current = false;
     lastPersistedRef.current = null;
 
     const bootstrap = async () => {
-      isBootstrappingRef.current = true;
       let mergedPoints = localSnapshot.points;
       let mergedBadges = localSnapshot.badges;
 
