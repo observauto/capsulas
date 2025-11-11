@@ -18,7 +18,7 @@ import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/l
 
 // --- DEFINICIONES Y DATOS MOCK ---
 interface UserProfile { id: string; user_id: string; email: string; name: string; role: string; level: number; created_at: string; avatar?: string; phone?: string; location?: string; bio?: string; }
-interface RedeemedPrize { id: string; prize_id: string; prize_name: string; prize_points: number; validation_code: string; redeemed_at: string; status: 'pending' | 'delivered' | 'cancelled'; }
+interface RedeemedPrize { id: string; prize_id: string; prize_name: string; prize_points: number; validation_code: string; redeemed_at: string; status: string; }
 interface CapsuleProgress { id: string; capsule_name: string; section_name: string; progress_percentage: number; completed_at?: string; last_accessed: string; time_spent_minutes: number; }
 const PRIZES = [ { id: "1", name: "Chaqueta Observauto Premium", description: "Chaqueta exclusiva", points: 1000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400", stock: 5, category: "premium", }, { id: "2", name: "Power Bank 20,000mAh", description: "Carga rápida, compacto", points: 500, image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400", stock: 15, category: "tech", }, { id: "3", name: "Kit Herramientas", description: "Set profesional de 50 piezas", points: 800, image: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400", stock: 8, category: "tools", } ];
 const USER_PROFILE_KEY = 'userProfile';
@@ -120,20 +120,15 @@ export default function UnificadoDashboard() {
 
     const confirmRedeem = async () => {
         if (!selectedPrize || !activeUserId) return;
-
         const newRedeemedPrize = { user_id: activeUserId, prize_id: selectedPrize.id, prize_name: selectedPrize.name, points_cost: selectedPrize.points, validation_code: validationCode, status: 'pending' };
-
         const { data, error } = await supabase.from('user_redeemed_prizes').insert(newRedeemedPrize).select().single();
-
         if (error) {
             console.error("Error al canjear premio:", error);
             toast({ title: "Error", description: "No se pudo canjear el premio.", variant: "destructive" });
             return;
         }
-        
         subtractPoints(selectedPrize.points);
         setRedeemedPrizes(prev => [data as RedeemedPrize, ...prev]);
-
         setShowRedeemModal(false);
         toast({ title: "¡Premio Canjeado!", description: `Tu código de validación: ${validationCode}.`, duration: 10000 });
         setSelectedPrize(null);
@@ -148,8 +143,8 @@ export default function UnificadoDashboard() {
     const nextMilestone = getNextMilestone();
     const progressToNext = (points / nextMilestone.points) * 100;
 
+    // ✅ CORRECCIÓN: Contenido completo de la vista pública restaurado.
     if (!user) {
-        // ✅ CORRECCIÓN: Contenido completo de la vista pública restaurado.
         return (
             <div className="container mx-auto p-6 space-y-6">
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
@@ -199,8 +194,7 @@ export default function UnificadoDashboard() {
                     <TabsTrigger value="capsulas">Cápsulas</TabsTrigger>
                     <TabsTrigger value="perfil">Perfil</TabsTrigger>
                 </TabsList>
-
-                {/* ✅ CORRECCIÓN: Contenido de todas las pestañas restaurado y conectado a la lógica correcta. */}
+                
                 <TabsContent value="resumen" className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium opacity-90">Puntos Totales</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{points}</div><p className="text-xs opacity-75 mt-1">Nivel {level}</p></CardContent></Card>
@@ -219,10 +213,10 @@ export default function UnificadoDashboard() {
                 </TabsContent>
                 <TabsContent value="insignias" className="space-y-6">
                     {earnedBadges.length > 0 && (<div><h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><Award className="h-5 w-5 text-primary" />Insignias Obtenidas ({earnedBadges.length})</h3><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{earnedBadges.map((badge) => (<Card key={badge.code} className="text-center p-4 hover:shadow-lg transition-all"><div className="text-5xl mb-2">{badge.icon}</div><h4 className="font-semibold mb-1">{badge.name}</h4><p className="text-xs text-muted-foreground">{badge.description}</p></Card>))}</div></div>)}
-                    <div><h3 className="text-xl font-semibold mb-4 text-muted-foreground flex items-center gap-2"><Award className="h-5 w-5" />Por Desbloquear ({Object.keys(AVAILABLE_BADGES).length - earnedBadges.length})</h3><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{Object.values(AVAILABLE_BADGES).filter((badge) => !earnedBadges.some((earned) => earned.code === badge.code)).map((badge) => (<Card key={badge.code} className="text-center p-4 opacity-50 grayscale hover:opacity-70 transition-all"><div className="text-5xl mb-2">{badge.icon}</div><h4 className="font-semibold mb-1">{badge.name}</h4><p className="text-xs text-muted-foreground">{badge.description}</p></Card>))}</div></div>
+                    <div><h3 className="text-xl font-semibold mb-4 text-muted-foreground flex items-center gap-2"><Award className="h-5 w-5" />Por Desbloquear ({Object.keys(AVAILABLE_BADGES).length - earnedBadges.length})</h3><div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{Object.values(AVAILABLE_BADGES).filter((b) => !badges.includes(b.code)).map((badge) => (<Card key={badge.code} className="text-center p-4 opacity-50 grayscale hover:opacity-70 transition-all"><div className="text-5xl mb-2">{badge.icon}</div><h4 className="font-semibold mb-1">{badge.name}</h4><p className="text-xs text-muted-foreground">{badge.description}</p></Card>))}</div></div>
                 </TabsContent>
                 <TabsContent value="reclamados" className="space-y-6">
-                    <Card><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Mis Premios Canjeados</CardTitle></CardHeader><CardContent>{redeemedPrizes.length > 0 ? (<div className="space-y-4">{redeemedPrizes.map((prize) => (<div key={prize.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"><div className="flex-1"><h4 className="font-medium text-gray-900">{prize.prize_name}</h4><div className="flex items-center gap-4 mt-2"><p className="text-sm text-gray-600">Canjeado: {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}</p><p className="text-sm text-blue-600 font-medium">{prize.prize_points} puntos</p><Badge variant={prize.status === 'delivered' ? 'default' : prize.status === 'pending' ? 'outline' : 'destructive'}>{prize.status}</Badge></div></div><div className="text-right"><p className="text-sm text-gray-500">Código:</p><p className="text-lg font-mono font-bold text-blue-600">{prize.validation_code}</p></div></div>))}</div>) : (<div className="text-center py-8"><Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" /><p className="text-gray-600">No has canjeado ningún premio aún.</p></div>)}</CardContent></Card>
+                    <Card><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Mis Premios Canjeados</CardTitle></CardHeader><CardContent>{redeemedPrizes.length > 0 ? (<div className="space-y-4">{redeemedPrizes.map((prize) => (<div key={prize.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"><div className="flex-1"><h4 className="font-medium text-gray-900">{prize.prize_name}</h4><div className="flex items-center gap-4 mt-2"><p className="text-sm text-gray-600">Canjeado: {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}</p><p className="text-sm text-blue-600 font-medium">{prize.prize_points} puntos</p><Badge variant={prize.status === 'delivered' ? 'default' : 'outline'}>{prize.status}</Badge></div></div><div className="text-right"><p className="text-sm text-gray-500">Código:</p><p className="text-lg font-mono font-bold text-blue-600">{prize.validation_code}</p></div></div>))}</div>) : (<div className="text-center py-8"><Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" /><p className="text-gray-600">No has canjeado ningún premio aún.</p></div>)}</CardContent></Card>
                 </TabsContent>
                 <TabsContent value="capsulas" className="space-y-4">
                     <Card><CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Progreso de Cápsulas</CardTitle></CardHeader><CardContent>{userCapsules.length > 0 ? (<div className="space-y-4">{userCapsules.map((capsule) => (<div key={capsule.id} className="p-4 border rounded-lg"><h4 className="font-medium">{capsule.capsule_name}</h4><p className="text-sm text-gray-500">Completada el {new Date(capsule.completed_at!).toLocaleDateString('es-ES')}</p></div>))}</div>) : (<div className="text-center py-12"><Target className="h-16 w-16 text-gray-400 mx-auto mb-4" /><h3 className="text-lg font-semibold text-gray-700">No hay cápsulas completadas</h3></div>)}</CardContent></Card>
