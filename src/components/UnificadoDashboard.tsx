@@ -14,16 +14,17 @@ import { Trophy, Star, Target, Award, Clock, TrendingUp, Gift, CheckCircle2, X, 
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import EditProfileModal from './EditProfileModal';
-import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
+import { readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
-// --- DEFINICIONES Y DATOS MOCK ---
+// --- DEFINICIONES Y DATOS ---
 interface UserProfile { id: string; user_id: string; email: string; name: string; role: string; level: number; created_at: string; avatar?: string; phone?: string; location?: string; bio?: string; }
 interface RedeemedPrize { id: string; prize_id: string; prize_name: string; prize_points: number; validation_code: string; redeemed_at: string; status: string; }
 interface CapsuleProgress { id: string; capsule_name: string; section_name: string; progress_percentage: number; completed_at?: string; last_accessed: string; time_spent_minutes: number; }
-const PRIZES = [ { id: "1", name: "Chaqueta Observauto Premium", description: "Chaqueta exclusiva", points: 1000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400", stock: 5, category: "premium", }, { id: "2", name: "Power Bank 20,000mAh", description: "Carga rápida, compacto", points: 500, image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400", stock: 15, category: "tech", }, { id: "3", name: "Kit Herramientas", description: "Set profesional de 50 piezas", points: 800, image: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400", stock: 8, category: "tools", } ];
+
+// ✅ CORRECCIÓN: Lista completa de premios restaurada.
+const PRIZES = [ { id: "1", name: "Chaqueta Observauto Premium", description: "Chaqueta exclusiva de la marca patrocinadora con tecnología térmica", points: 1000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400", stock: 5, category: "premium", }, { id: "2", name: "Power Bank Observauto 20,000mAh", description: "Carga rápida, diseño compacto, perfecto para viajes", points: 500, image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400", stock: 15, category: "tech", }, { id: "3", name: "Kit de Herramientas Automotriz", description: "Set profesional de 50 piezas para mantenimiento vehicular", points: 800, image: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400", stock: 8, category: "tools", }, { id: "4", name: "Audífonos Bluetooth Premium", description: "Cancelación de ruido activa, 30 horas de batería", points: 600, image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400", stock: 12, category: "tech", }, { id: "5", name: "Mochila Observauto Tech", description: "Mochila antirrobo con puerto USB y compartimento para laptop", points: 400, image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400", stock: 20, category: "accessories", }, { id: "6", name: "Smartwatch Deportivo", description: "Monitor de ritmo cardíaco, GPS integrado, resistente al agua", points: 1200, image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400", stock: 3, category: "premium", }, { id: "7", name: "Termo Inteligente 500ml", description: "Mantiene temperatura 12h, pantalla LED, recargable USB", points: 300, image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400", stock: 25, category: "accessories", }, { id: "8", name: "Llavero Observauto Premium", description: "Llavero metálico de lujo con acabado cromado", points: 100, image: "https://images.unsplash.com/photo-1582719471137-c3967ffb1c42?w=400", stock: 50, category: "accessories", }, ];
+
 const USER_PROFILE_KEY = 'userProfile';
-const REDEEMED_PRIZES_KEY = 'redeemedPrizes';
-const COMPLETED_CAPSULES_KEY = 'completed_capsules';
 
 const loadUserProfile = (user: { id: string, email: string, name: string } | null): UserProfile => {
     const baseProfile: UserProfile = { id: '1', user_id: user?.id || 'guest', email: user?.email || '', name: user?.name || 'Invitado', role: 'end_user', level: 1, created_at: new Date().toISOString() };
@@ -32,9 +33,7 @@ const loadUserProfile = (user: { id: string, email: string, name: string } | nul
         const finalName = user?.name || saved?.name || 'Invitado';
         const finalEmail = user?.email || saved?.email || '';
         return { ...baseProfile, ...saved, user_id: user?.id || 'guest', name: finalName, email: finalEmail };
-    } catch {
-        return baseProfile;
-    }
+    } catch { return baseProfile; }
 }
 
 export default function UnificadoDashboard() {
@@ -89,17 +88,18 @@ export default function UnificadoDashboard() {
     useEffect(() => {
         setUserProfile(loadUserProfile(user));
         loadDashboardData();
+        // Escuchar evento para recargar datos cuando la gamificación se actualiza en otro lado
+        const handleGamificationUpdate = () => loadDashboardData();
+        window.addEventListener('gamification:update', handleGamificationUpdate);
+        return () => window.removeEventListener('gamification:update', handleGamificationUpdate);
     }, [user, loadDashboardData]);
 
     const earnedBadges = useMemo(() => badges.map(code => AVAILABLE_BADGES[code]).filter(Boolean), [badges]);
-
     const handleProfileUpdate = (updatedProfile: UserProfile) => {
         setUserProfile(updatedProfile);
         writeUserScopedJSON(USER_PROFILE_KEY, updatedProfile, activeUserId);
     };
-    
     const getNextLevelPoints = (currentLevel: number) => currentLevel * 100;
-
     const getCurrentLevelProgress = () => {
         const currentLevelPoints = (level - 1) * 100;
         const nextLevelPointsThreshold = getNextLevelPoints(level);
@@ -148,15 +148,9 @@ export default function UnificadoDashboard() {
             <div className="container mx-auto p-6 space-y-6">
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
                     <CardContent className="p-8 text-center space-y-4">
-                        <UserX className="h-12 w-12 text-blue-600 mx-auto" />
-                        <h2 className="text-xl font-semibold text-gray-900">Accede a tu Panel Personal</h2>
-                        <p className="text-gray-600 max-w-md mx-auto">
-                            Inicia sesión con tu cuenta de Google para ver tu progreso, puntos, insignias y canjear premios exclusivos.
-                        </p>
-                        <Button onClick={signInWithGoogle} className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white">
-                            <LogIn className="h-4 w-4 mr-2" />
-                            Iniciar Sesión con Google
-                        </Button>
+                        <UserX className="h-12 w-12 text-blue-600 mx-auto" /><h2 className="text-xl font-semibold text-gray-900">Accede a tu Panel Personal</h2>
+                        <p className="text-gray-600 max-w-md mx-auto">Inicia sesión con tu cuenta de Google para ver tu progreso, puntos, insignias y canjear premios exclusivos.</p>
+                        <Button onClick={signInWithGoogle} className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white"><LogIn className="h-4 w-4 mr-2" />Iniciar Sesión con Google</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -166,34 +160,16 @@ export default function UnificadoDashboard() {
     if (isGamificationLoading || isLoadingData) {
         return (
             <div className="flex items-center justify-center p-8">
-                <div className="text-center">
-                    <RefreshCw className="h-8 w-8 mx-auto animate-spin text-primary" />
-                    <p className="mt-2 text-gray-600">Sincronizando tu progreso...</p>
-                </div>
+                <div className="text-center"><RefreshCw className="h-8 w-8 mx-auto animate-spin text-primary" /><p className="mt-2 text-gray-600">Sincronizando tu progreso...</p></div>
             </div>
         );
     }
 
     return (
         <div className="container mx-auto p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Mi Panel</h1>
-                    <p className="text-gray-600 mt-1">Bienvenido, {user?.name || userProfile.name}</p>
-                </div>
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Usuario Registrado</Badge>
-            </div>
-
+            <div className="flex items-center justify-between"><h1 className="text-3xl font-bold text-gray-900">Mi Panel</h1><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Usuario Registrado</Badge></div>
             <Tabs defaultValue="resumen" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-6">
-                    <TabsTrigger value="resumen">Resumen</TabsTrigger>
-                    <TabsTrigger value="premios">Premios</TabsTrigger>
-                    <TabsTrigger value="insignias">Insignias</TabsTrigger>
-                    <TabsTrigger value="reclamados">Reclamados</TabsTrigger>
-                    <TabsTrigger value="capsulas">Cápsulas</TabsTrigger>
-                    <TabsTrigger value="perfil">Perfil</TabsTrigger>
-                </TabsList>
-                
+                <TabsList className="grid w-full grid-cols-6"><TabsTrigger value="resumen">Resumen</TabsTrigger><TabsTrigger value="premios">Premios</TabsTrigger><TabsTrigger value="insignias">Insignias</TabsTrigger><TabsTrigger value="reclamados">Reclamados</TabsTrigger><TabsTrigger value="capsulas">Cápsulas</TabsTrigger><TabsTrigger value="perfil">Perfil</TabsTrigger></TabsList>
                 <TabsContent value="resumen" className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium opacity-90">Puntos Totales</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{points}</div><p className="text-xs opacity-75 mt-1">Nivel {level}</p></CardContent></Card>
@@ -203,7 +179,7 @@ export default function UnificadoDashboard() {
                     </div>
                     <Card><CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" />Progreso de Nivel</CardTitle></CardHeader><CardContent><div className="space-y-4"><div className="flex justify-between items-center"><span className="text-sm font-medium">Nivel {level} → {level + 1}</span><span className="text-sm text-gray-600">{points} / {getNextLevelPoints(level)} puntos</span></div><Progress value={getCurrentLevelProgress()} className="h-2" /><p className="text-xs text-gray-600">{getNextLevelPoints(level) - points} puntos para el siguiente nivel</p></div></CardContent></Card>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5" />Próximo Hito</CardTitle></CardHeader><CardContent className="space-y-4"><div><div className="flex items-center justify-between mb-2 text-sm"><span>Próximo nivel: {nextMilestone.name}</span><span className="font-semibold">{nextMilestone.points} pts</span></div><Progress value={progressToNext} className="h-3" /></div><div className="text-center p-3 rounded-lg bg-background/50"><Gift className="h-6 w-6 mx-auto mb-1 text-green-500" /><div className="text-2xl font-bold">{PRIZES.filter(p => p.points <= points).length}</div><div className="text-xs text-muted-foreground">Premios Disponibles</div></div></CardContent></Card>
+                        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5" />Próximo Hito</CardTitle></CardHeader><CardContent className="space-y-4"><div><div className="flex items-center justify-between mb-2 text-sm"><span>Próximo hito: {nextMilestone.name}</span><span className="font-semibold">{nextMilestone.points} pts</span></div><Progress value={progressToNext} className="h-3" /></div><div className="text-center p-3 rounded-lg bg-background/50"><Gift className="h-6 w-6 mx-auto mb-1 text-green-500" /><div className="text-2xl font-bold">{PRIZES.filter(p => p.points <= points).length}</div><div className="text-xs text-muted-foreground">Premios Disponibles</div></div></CardContent></Card>
                         <Card><CardHeader><CardTitle className="flex items-center gap-2"><Award className="h-5 w-5" />Últimas Insignias</CardTitle></CardHeader><CardContent>{earnedBadges.length > 0 ? (<div className="space-y-3">{earnedBadges.slice(0, 3).map((badge) => (<div key={badge.code} className="flex items-center gap-3"><div className="text-2xl">{badge.icon}</div><div className="flex-1"><p className="text-sm font-medium">{badge.name}</p><p className="text-xs text-gray-600">{badge.description}</p></div></div>))}{earnedBadges.length > 3 && (<p className="text-xs text-gray-500 text-center">+{earnedBadges.length - 3} insignias más</p>)}</div>) : (<p className="text-sm text-gray-600 text-center py-4">Aún no has obtenido insignias</p>)}</CardContent></Card>
                     </div>
                 </TabsContent>
@@ -218,7 +194,7 @@ export default function UnificadoDashboard() {
                     <Card><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" />Mis Premios Canjeados</CardTitle></CardHeader><CardContent>{redeemedPrizes.length > 0 ? (<div className="space-y-4">{redeemedPrizes.map((prize) => (<div key={prize.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"><div className="flex-1"><h4 className="font-medium text-gray-900">{prize.prize_name}</h4><div className="flex items-center gap-4 mt-2"><p className="text-sm text-gray-600">Canjeado: {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}</p><p className="text-sm text-blue-600 font-medium">{prize.prize_points} puntos</p><Badge variant={prize.status === 'delivered' ? 'default' : 'outline'}>{prize.status}</Badge></div></div><div className="text-right"><p className="text-sm text-gray-500">Código:</p><p className="text-lg font-mono font-bold text-blue-600">{prize.validation_code}</p></div></div>))}</div>) : (<div className="text-center py-8"><Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" /><p className="text-gray-600">No has canjeado ningún premio aún.</p></div>)}</CardContent></Card>
                 </TabsContent>
                 <TabsContent value="capsulas" className="space-y-4">
-                    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Progreso de Cápsulas</CardTitle></CardHeader><CardContent>{userCapsules.length > 0 ? (<div className="space-y-4">{userCapsules.map((capsule) => (<div key={capsule.id} className="p-4 border rounded-lg"><h4 className="font-medium">{capsule.capsule_name}</h4><p className="text-sm text-gray-500">Completada el {new Date(capsule.completed_at!).toLocaleDateString('es-ES')}</p></div>))}</div>) : (<div className="text-center py-12"><Target className="h-16 w-16 text-gray-400 mx-auto mb-4" /><h3 className="text-lg font-semibold text-gray-700">No hay cápsulas completadas</h3></div>)}</CardContent></Card>
+                    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Cápsulas Completadas</CardTitle></CardHeader><CardContent>{userCapsules.length > 0 ? (<div className="space-y-4">{userCapsules.map((capsule) => (<div key={capsule.id} className="p-4 border rounded-lg hover:bg-gray-50"><h4 className="font-medium">{capsule.capsule_name}</h4><p className="text-sm text-gray-500">Completada el {new Date(capsule.completed_at!).toLocaleDateString('es-ES')}</p></div>))}</div>) : (<div className="text-center py-12"><Target className="h-16 w-16 text-gray-400 mx-auto mb-4" /><h3 className="text-lg font-semibold text-gray-700">No hay cápsulas completadas</h3></div>)}</CardContent></Card>
                 </TabsContent>
                 <TabsContent value="perfil" className="space-y-4">
                     <Card><CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Mi Perfil</CardTitle></CardHeader><CardContent className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="space-y-4"><div><label className="block text-sm font-medium text-gray-700">Nombre</label><p className="text-gray-900">{userProfile.name}</p></div><div><label className="block text-sm font-medium text-gray-700">Email</label><p className="text-gray-900">{userProfile.email}</p></div></div><div className="space-y-4"><div><label className="block text-sm font-medium text-gray-700">Nivel</label><p className="text-2xl font-bold text-blue-600">{level}</p></div><div><label className="block text-sm font-medium text-gray-700">Miembro desde</label><p className="text-gray-900">{new Date(userProfile.created_at).toLocaleDateString('es-ES')}</p></div></div></div><div className="pt-4 border-t"><Button className="w-full" onClick={() => setShowEditProfileModal(true)}><Star className="h-4 w-4 mr-2" />Editar Perfil</Button></div></CardContent></Card>
@@ -232,4 +208,178 @@ export default function UnificadoDashboard() {
             <EditProfileModal open={showEditProfileModal} onOpenChange={setShowEditProfileModal} profile={userProfile} onProfileUpdate={handleProfileUpdate} />
         </div>
     );
-}
+}```
+
+---
+
+**2. Archivo: `src/pages/FullCapsule.tsx` (Contenido Completo)**
+
+**Instrucción:** Reemplaza el contenido completo de este archivo. He modificado la función `completeCapsuleWithGamification` para que guarde la cápsula completada en la tabla `user_completed_capsules` de Supabase.
+
+```typescript
+// Ruta del archivo: src/pages/FullCapsule.tsx
+
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Share2, Bookmark, BookmarkCheck, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Footer } from "@/components/Footer";
+import { SponsorStrip } from "@/components/SponsorStrip";
+import { RegistrationModal } from "@/components/RegistrationModal";
+import { Sponsor } from "@/types/capsule";
+import { WizardMode } from "@/components/WizardMode";
+import { ArticleMode } from "@/components/ArticleMode";
+import { getFullCapsuleBySlug, isCapsuleCompleted as checkIsCapsuleCompleted } from "@/lib/capsulesRepo";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
+import { useGamification } from "@/context/GamificationContext";
+import { useAuth } from "@/context/AuthContext";
+import { useOnlyFavorites } from "@/context/OnlyFavoritesContext";
+import confetti from "canvas-confetti";
+import { supabase } from "@/lib/supabase"; // ✅ Importar Supabase
+
+const SPONSORS: Sponsor[] = [ { name: "BYD", logoUrl: "/BYD-Logo-White-PNG.png", link: "https://www.byd.com", accentColor: "#00447c" } ];
+
+const FullCapsule = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { addPoints, grantBadges } = useGamification();
+  const [capsule, setCapsule] = useState(getFullCapsuleBySlug(slug || ""));
+  const [loadTimestamp] = useState(new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" }));
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const { toggleFavorite, isFavorite } = useOnlyFavorites();
+
+  const handleShare = async () => {
+    if (!capsule) return;
+    const shareData = { title: capsule.title, text: `Descubre "${capsule.title}" en ObservAuto Cápsulas`, url: window.location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        toast({ title: "¡Copiado!", description: "Enlace copiado al portapapeles" });
+      }
+    } catch (err) { console.error("Share error:", err); }
+  };
+
+  // ✅ CORRECCIÓN: Esta función ahora escribe en Supabase
+  const completeCapsuleWithGamification = async () => {
+    if (!capsule || !user) return;
+
+    // Verificar si ya fue completada para no duplicar puntos
+    const { data: existing, error: checkError } = await supabase
+        .from('user_completed_capsules')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('capsule_slug', capsule.slug)
+        .maybeSingle();
+
+    if (checkError) {
+        console.error("Error verificando cápsula completada:", checkError);
+        toast({ title: "Error", description: "No se pudo verificar el estado de la cápsula.", variant: "destructive" });
+        return;
+    }
+
+    if (existing) {
+        toast({ title: "Cápsula ya completada", description: "Ya has ganado los puntos por esta cápsula." });
+        navigate("/");
+        return;
+    }
+
+    // Guardar en Supabase
+    const { error: insertError } = await supabase
+      .from('user_completed_capsules')
+      .insert({ user_id: user.id, capsule_slug: capsule.slug });
+
+    if (insertError) {
+      console.error("Error guardando cápsula completada:", insertError);
+      toast({ title: "Error", description: "No se pudo guardar tu progreso.", variant: "destructive" });
+      return;
+    }
+
+    // Lógica de gamificación
+    const basePoints = 100;
+    const difficultyBonus = capsule.difficulty === "advanced" ? 50 : capsule.difficulty === "intermediate" ? 25 : 0;
+    const totalPoints = basePoints + difficultyBonus;
+    addPoints(totalPoints);
+
+    const badgesToGrant: string[] = [];
+    if (capsule.mode === 'wizard') badgesToGrant.push('wizard_complete');
+    else badgesToGrant.push('article_reader');
+    
+    // Aquí puedes añadir más lógica de badges si es necesario
+    
+    grantBadges(badgesToGrant);
+    
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#1C3B71', '#D70102', '#FFD700'] });
+    
+    toast({
+      title: `¡Cápsula Completada! 🎉`,
+      description: `Has ganado ${totalPoints} puntos.`,
+      duration: 5000,
+    });
+    
+    // Notificar al dashboard para que se recargue
+    window.dispatchEvent(new CustomEvent('gamification:update'));
+
+    setTimeout(() => navigate("/"), 3000);
+  };
+
+  const handleComplete = () => {
+    if (!user) {
+      setShowRegistrationModal(true);
+      return;
+    }
+    completeCapsuleWithGamification();
+  };
+  
+  const handleContinueWithoutRegistration = () => {
+    setShowRegistrationModal(false);
+    toast({ title: "Modo invitado", description: "Puedes leer la cápsula, pero tu progreso no se guardará." });
+  };
+  
+  if (!capsule) {
+    return ( <div>Cápsula no encontrada</div> );
+  }
+  
+  const isCompleted = checkIsCapsuleCompleted(capsule.slug);
+
+  return (
+    <div className="min-h-screen hero-bg">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <Button variant="ghost" onClick={() => navigate("/")} className="mb-4"><ArrowLeft className="h-4 w-4 mr-2" />Volver a cápsulas</Button>
+        <div className="bg-gradient-to-br from-card/95 via-card/90 to-primary/5 backdrop-blur-lg border-2 border-primary/20 rounded-2xl overflow-hidden shadow-lg mb-6">
+            <div className="p-4 md:p-6 pb-3 md:pb-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">{capsule.title}</h1>
+                            {isCompleted && (<Badge variant="secondary" className="flex items-center gap-1 text-xs"><CheckCircle2 className="h-3 w-3" />Completada</Badge>)}
+                        </div>
+                        {capsule.mode === "article" && (<p className="text-muted-foreground text-sm md:text-base leading-relaxed">{capsule.summary}</p>)}
+                        {capsule.difficulty && (<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary mt-2">{capsule.difficulty === "beginner" ? "🌱 Principiante" : capsule.difficulty === "intermediate" ? "⚡ Intermedio" : "🏆 Avanzado"}</span>)}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => toggleFavorite(capsule.slug)} className="h-9 w-9 rounded-full hover:bg-primary/10" title={isFavorite(capsule.slug) ? "Quitar de favoritos" : "Añadir a favoritos"}>{isFavorite(capsule.slug) ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4" />}</Button>
+                        <Button variant="ghost" size="icon" onClick={handleShare} className="h-9 w-9 rounded-full hover:bg-primary/10" title="Compartir cápsula"><Share2 className="h-4 w-4" /></Button>
+                    </div>
+                </div>
+            </div>
+            {capsule.sponsors && capsule.sponsors.length > 0 && (
+                <div className="px-3 pb-3"><div className="rounded-xl overflow-hidden border border-border/30 bg-background/40"><SponsorStrip sponsors={capsule.sponsors} variant="capsule" /></div></div>
+            )}
+        </div>
+        <div className="bg-card/80 backdrop-blur border border-border/50 rounded-2xl p-6 md:p-8">
+            {capsule.mode === "wizard" ? <WizardMode capsule={capsule} onComplete={handleComplete} /> : <ArticleMode capsule={capsule} onComplete={handleComplete} />}
+        </div>
+      </div>
+      <Footer lastLoadTimestamp={loadTimestamp} />
+      <Toaster />
+      <RegistrationModal open={showRegistrationModal} onOpenChange={setShowRegistrationModal} onContinue={handleContinueWithoutRegistration} context="capsule" />
+    </div>
+  );
+};
+
+export default FullCapsule;
