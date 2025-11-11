@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import EditProfileModal from './EditProfileModal';
+import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
 // Datos base - SIN PROGRESO FALSO
 const BASE_USER_PROFILE = {
@@ -33,12 +34,16 @@ const BASE_USER_PROFILE = {
   bio: ''
 };
 
-// Función para cargar perfil desde localStorage
-const loadUserProfile = (): typeof BASE_USER_PROFILE => {
+const USER_PROFILE_KEY = 'userProfile';
+const COMPLETED_CAPSULES_KEY = 'completed_capsules';
+const REDEEMED_PRIZES_KEY = 'redeemedPrizes';
+
+// Función para cargar perfil desde localStorage por usuario
+const loadUserProfile = (userId?: string | null): typeof BASE_USER_PROFILE => {
   try {
-    const savedProfile = localStorage.getItem('userProfile');
+    const savedProfile = readUserScopedJSON<typeof BASE_USER_PROFILE>(USER_PROFILE_KEY, userId, USER_PROFILE_KEY);
     if (savedProfile) {
-      return { ...BASE_USER_PROFILE, ...JSON.parse(savedProfile) };
+      return { ...BASE_USER_PROFILE, ...savedProfile };
     }
   } catch (error) {
     console.error('Error loading profile from localStorage:', error);
@@ -159,9 +164,9 @@ const PRIZES = [
 ];
 
 // Función para cargar cápsulas completadas desde localStorage
-const loadUserCapsules = (): CapsuleProgress[] => {
+const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
   try {
-    const completedCapsules = JSON.parse(localStorage.getItem('completed_capsules') || '[]');
+    const completedCapsules = readUserScopedJSON<string[]>(COMPLETED_CAPSULES_KEY, userId, COMPLETED_CAPSULES_KEY) || [];
     const userCapsules: CapsuleProgress[] = [];
     
     completedCapsules.forEach((capsuleSlug: string, index: number) => {
@@ -199,25 +204,19 @@ const loadUserCapsules = (): CapsuleProgress[] => {
   }
 };
 
-// CÁPSULAS EN PROGRESO - Cargadas dinámicamente
-let USER_CAPSULES: CapsuleProgress[] = loadUserCapsules();
-
 // PREMIOS REDIMIDOS - Sistema de persistencia completo
-const REDEEMED_PRIZES_KEY = 'redeemedPrizes';
-
-const loadRedeemedPrizes = (): RedeemedPrize[] => {
+const loadRedeemedPrizes = (userId?: string | null): RedeemedPrize[] => {
   try {
-    const savedPrizes = localStorage.getItem(REDEEMED_PRIZES_KEY);
-    return savedPrizes ? JSON.parse(savedPrizes) : [];
+    return readUserScopedJSON<RedeemedPrize[]>(REDEEMED_PRIZES_KEY, userId, REDEEMED_PRIZES_KEY) || [];
   } catch (error) {
     console.error('Error loading redeemed prizes from localStorage:', error);
     return [];
   }
 };
 
-const saveRedeemedPrizes = (prizes: RedeemedPrize[]): void => {
+const saveRedeemedPrizes = (prizes: RedeemedPrize[], userId?: string | null): void => {
   try {
-    localStorage.setItem(REDEEMED_PRIZES_KEY, JSON.stringify(prizes));
+    writeUserScopedJSON(REDEEMED_PRIZES_KEY, prizes, userId);
     console.log('[UNIFICADO_DASHBOARD] Premios redimidos guardados:', prizes.length);
   } catch (error) {
     console.error('Error saving redeemed prizes to localStorage:', error);
@@ -226,54 +225,67 @@ const saveRedeemedPrizes = (prizes: RedeemedPrize[]): void => {
 
 export default function UnificadoDashboard() {
   const { user, signInWithGoogle } = useAuth();
+  const activeUserId = user?.id ?? null;
   const { points, badges, subtractPoints } = useGamification();
-  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes());
+  const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes(activeUserId));
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
   const [validationCode, setValidationCode] = useState("");
   
   // Estados para el perfil
-  const [userProfile, setUserProfile] = useState(() => loadUserProfile());
+  const [userProfile, setUserProfile] = useState(() => loadUserProfile(activeUserId));
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  
+
   // Estados para cápsulas de usuario (dinámico)
-  const [userCapsules, setUserCapsules] = useState<CapsuleProgress[]>(() => loadUserCapsules());
+  const [userCapsules, setUserCapsules] = useState<CapsuleProgress[]>(() => loadUserCapsules(activeUserId));
+
+  React.useEffect(() => {
+    setUserProfile(loadUserProfile(activeUserId));
+    setRedeemedPrizes(loadRedeemedPrizes(activeUserId));
+    setUserCapsules(loadUserCapsules(activeUserId));
+  }, [activeUserId]);
 
   // Actualizar cápsulas cuando cambien en localStorage
   React.useEffect(() => {
-    const handleStorageChange = () => {
-      setUserCapsules(loadUserCapsules());
+    const capsulesKey = buildUserScopedKey(COMPLETED_CAPSULES_KEY, activeUserId);
+    const handleStorageChange = (event?: StorageEvent) => {
+      if (event && event.key && event.key !== capsulesKey) {
+        return;
+      }
+      setUserCapsules(loadUserCapsules(activeUserId));
     };
 
-    // Escuchar cambios en localStorage
+    const handleCustomUpdate = () => handleStorageChange();
+
     window.addEventListener('storage', handleStorageChange);
-    
-    // Escuchar cambios personalizados de gamificación
-    window.addEventListener('gamification:update', handleStorageChange);
+    window.addEventListener('gamification:update', handleCustomUpdate);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('gamification:update', handleStorageChange);
+      window.removeEventListener('gamification:update', handleCustomUpdate);
     };
-  }, []);
+  }, [activeUserId]);
 
   // Actualizar premios redimidos cuando cambien en localStorage
   React.useEffect(() => {
-    const handlePrizesChange = () => {
-      setRedeemedPrizes(loadRedeemedPrizes());
+    const prizesKey = buildUserScopedKey(REDEEMED_PRIZES_KEY, activeUserId);
+    const handlePrizesChange = (event?: StorageEvent) => {
+      if (event && event.key && event.key !== prizesKey) {
+        return;
+      }
+      setRedeemedPrizes(loadRedeemedPrizes(activeUserId));
     };
 
-    // Escuchar cambios en localStorage para premios redimidos
+    const handleCustomPrize = () => handlePrizesChange();
+
     window.addEventListener('storage', handlePrizesChange);
-    
-    // Escuchar cambios personalizados para premios redimidos
-    window.addEventListener('prizes:redeem', handlePrizesChange);
+    window.addEventListener('prizes:redeem', handleCustomPrize);
 
     return () => {
       window.removeEventListener('storage', handlePrizesChange);
-      window.removeEventListener('prizes:redeem', handlePrizesChange);
+      window.removeEventListener('prizes:redeem', handleCustomPrize);
     };
-  }, []);
+  }, [activeUserId]);
 
   const earnedBadges = React.useMemo(() => {
     return badges.map(code => {
@@ -291,7 +303,7 @@ export default function UnificadoDashboard() {
   // Función para actualizar el perfil del usuario
   const handleProfileUpdate = (updatedProfile: typeof userProfile) => {
     setUserProfile(updatedProfile);
-    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+    writeUserScopedJSON(USER_PROFILE_KEY, updatedProfile, activeUserId);
   };
 
   // Datos mock para logros (basados en badges obtenidos)
@@ -366,7 +378,7 @@ const nextMilestone = getNextMilestone();
       // Agregar a la lista local Y guardar en localStorage
       const updatedPrizes = [newRedeemedPrize, ...redeemedPrizes];
       setRedeemedPrizes(updatedPrizes);
-      saveRedeemedPrizes(updatedPrizes);
+      saveRedeemedPrizes(updatedPrizes, activeUserId);
 
       // Disparar evento para notificar a otros componentes
       window.dispatchEvent(new CustomEvent('prizes:redeem', { 
