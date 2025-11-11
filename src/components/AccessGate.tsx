@@ -6,7 +6,7 @@ type Props = {
 };
 
 export default function AccessGate({ children }: Props) {
-  const { loading, accessCodeValid, validateAccessCode } = useAuth();
+  const { loading, accessCodeValid, validateAccessCode, user } = useAuth();
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showAccessGate, setShowAccessGate] = React.useState(true);
@@ -31,7 +31,7 @@ export default function AccessGate({ children }: Props) {
   }
 
   // Si el código es válido y AccessGate está desactivado, mostrar contenido sin modal
-  if (accessCodeValid || !showAccessGate) {
+  if (accessCodeValid || user || !showAccessGate) {
     return <>{children}</>;
   }
 

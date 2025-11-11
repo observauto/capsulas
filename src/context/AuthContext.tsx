@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, User } from '@/lib/supabase'
 import { fullSync } from '@/lib/gamification-sync'
+import { setActiveUserId } from '@/lib/user-storage'
 import { toast } from '@/hooks/use-toast'
 
 interface AuthContextType {
@@ -27,6 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedCode = localStorage.getItem('access_code_valid')
     setAccessCodeValid(savedCode === 'true')
   }, [])
+
+  useEffect(() => {
+    setActiveUserId(user?.id ?? null)
+  }, [user?.id])
 
   // Cargar usuario al iniciar
   useEffect(() => {
@@ -77,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           userId: session?.user?.id,
           userEmail: session?.user?.email
         })
-        
+
         if (session?.user) {
           const user: User = {
             id: session.user.id,
@@ -87,14 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             created_at: session.user.created_at || ''
           }
           setUser(user)
-          
+
           // Sincronizar datos solo en SIGNED_IN event EN BACKGROUND
           if (event === 'SIGNED_IN') {
             console.log('[AUTH] Sincronizando datos despues de login en background...')
             handleDataSync(user.id, user.email).catch(error => {
               console.error('[AUTH] Error en sync después de login:', error)
             })
-            
+
             // Redirect to saved URL if exists
             const returnToUrl = sessionStorage.getItem('returnToCapsule');
             if (returnToUrl) {
@@ -107,10 +112,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          console.log('[AUTH] No hay sesion, limpiando usuario')
-          setUser(null)
+          // Algunos eventos (ej. INITIAL_SESSION) pueden dispararse sin sesión válida
+          // inmediatamente después de un SIGNED_IN. Evitamos limpiar el usuario
+          // salvo en eventos que representan un cierre real de sesión.
+          if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            console.log('[AUTH] No hay sesion, limpiando usuario')
+            setUser(null)
+          } else {
+            console.log('[AUTH] Evento sin sesión, preservando estado actual')
+          }
         }
-        
+
         setLoading(false)  // IMPORTANTE: Siempre terminar el loading inmediatamente
       }
     )
