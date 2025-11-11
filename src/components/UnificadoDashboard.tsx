@@ -143,7 +143,6 @@ export default function UnificadoDashboard() {
     const nextMilestone = getNextMilestone();
     const progressToNext = (points / nextMilestone.points) * 100;
 
-    // ✅ CORRECCIÓN: Contenido completo de la vista pública restaurado.
     if (!user) {
         return (
             <div className="container mx-auto p-6 space-y-6">
