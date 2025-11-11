@@ -1,3 +1,5 @@
+// Ruta del archivo: src/lib/supabase.ts
+
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = 'https://ocuehuwgxyknnwyjubpt.supabase.co'
@@ -8,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'implicit', // CAMBIADO: Usar flow más simple para evitar loops
+    flowType: 'pkce', // ✅ Flujo correcto y seguro
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'supabase.auth.token'
   }

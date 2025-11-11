@@ -69,11 +69,10 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       isBootstrapping.current = true;
       setIsLoading(true);
 
-      // Espera a que la sincronización inicial del login termine si está en progreso
       if (isSyncing) {
-        console.log('[GAMIFICATION] Esperando a que la sincronización inicial del AuthContext termine...');
+        console.log('[GAMIFICATION] Esperando fin de sincronización de AuthContext...');
         isBootstrapping.current = false;
-        setIsLoading(false); // Podríamos mantenerlo en true, pero esto evita bloqueos
+        // No marcamos isLoading como false para que espere al siguiente render
         return;
       }
 
@@ -86,19 +85,17 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
           if (remoteData.status === "success" && remoteData.snapshot) {
             const remoteSnapshot = mergeSnapshots(remoteData.snapshot.points, remoteData.snapshot.badges);
             applySnapshot(remoteSnapshot);
-            console.log('[GAMIFICATION] Datos cargados desde Supabase:', remoteSnapshot);
           } else {
-            console.warn('[GAMIFICATION] No se encontraron datos en Supabase para el usuario. Se usará data local si existe.');
             const localRecord = readLocalGamificationData(user.id);
             applySnapshot(localRecord.snapshot);
           }
         } catch (error) {
-          console.error("[GAMIFICATION] Error cargando datos remotos, usando fallback a datos locales:", error);
+          console.error("[GAMIFICATION] Error cargando datos remotos, usando fallback local:", error);
           const localRecord = readLocalGamificationData(user.id);
           applySnapshot(localRecord.snapshot);
         }
       } else {
-        console.log('[GAMIFICATION] Usuario no autenticado. Cargando datos de invitado desde localStorage.');
+        console.log('[GAMIFICATION] Usuario no autenticado. Cargando datos de invitado.');
         const localRecord = readLocalGamificationData(null);
         applySnapshot(localRecord.snapshot);
       }
@@ -111,10 +108,14 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     };
 
     bootstrap();
+    
+    // Escuchar el evento de finalización de sincronización
+    window.addEventListener('gamification:syncComplete', bootstrap);
 
     return () => {
       cancelled = true;
       isBootstrapping.current = false;
+      window.removeEventListener('gamification:syncComplete', bootstrap);
     };
   }, [user, isSyncing, applySnapshot]);
 
