@@ -1,5 +1,11 @@
 import { supabase } from "./supabase";
-import { KEY_BADGES, KEY_POINTS } from "./gamification-keys";
+import {
+  KEY_BADGES,
+  KEY_OWNER,
+  KEY_POINTS,
+  buildGamificationKey,
+  normalizeUserId,
+} from "./gamification-keys";
 
 export type GamificationSnapshot = {
   points: number;
@@ -40,14 +46,26 @@ function normalizeBadges(value: unknown): string[] {
   );
 }
 
-export function readLocalGamificationData(): GamificationSnapshot {
+export function readLocalGamificationData(userId?: string | null): GamificationSnapshot {
   if (!isBrowser()) {
     return { points: 0, badges: [] };
   }
 
   try {
-    const storedPoints = window.localStorage.getItem(KEY_POINTS);
-    const storedBadges = window.localStorage.getItem(KEY_BADGES);
+    const normalizedUser = normalizeUserId(userId);
+    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
+    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
+
+    let storedPoints = window.localStorage.getItem(pointsKey);
+    let storedBadges = window.localStorage.getItem(badgesKey);
+
+    if (storedPoints === null && storedBadges === null && normalizedUser) {
+      const owner = window.localStorage.getItem(KEY_OWNER);
+      if (owner === normalizedUser) {
+        storedPoints = window.localStorage.getItem(KEY_POINTS);
+        storedBadges = window.localStorage.getItem(KEY_BADGES);
+      }
+    }
 
     return {
       points: storedPoints ? normalizePoints(storedPoints) : 0,
@@ -59,27 +77,50 @@ export function readLocalGamificationData(): GamificationSnapshot {
   }
 }
 
-export function writeLocalGamificationData(snapshot: GamificationSnapshot): void {
+export function writeLocalGamificationData(snapshot: GamificationSnapshot, userId?: string | null): void {
   if (!isBrowser()) {
     return;
   }
 
   try {
-    window.localStorage.setItem(KEY_POINTS, String(normalizePoints(snapshot.points)));
-    window.localStorage.setItem(KEY_BADGES, JSON.stringify(normalizeBadges(snapshot.badges)));
+    const normalizedUser = normalizeUserId(userId);
+    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
+    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
+
+    window.localStorage.setItem(pointsKey, String(normalizePoints(snapshot.points)));
+    window.localStorage.setItem(badgesKey, JSON.stringify(normalizeBadges(snapshot.badges)));
+
+    if (normalizedUser) {
+      window.localStorage.setItem(KEY_OWNER, normalizedUser);
+      window.localStorage.removeItem(KEY_POINTS);
+      window.localStorage.removeItem(KEY_BADGES);
+    } else {
+      window.localStorage.removeItem(KEY_OWNER);
+    }
   } catch (error) {
     console.error("[GAMIFICATION] Error escribiendo localStorage:", error);
   }
 }
 
-export function clearLocalGamificationData(): void {
+export function clearLocalGamificationData(userId?: string | null): void {
   if (!isBrowser()) {
     return;
   }
 
   try {
-    window.localStorage.removeItem(KEY_POINTS);
-    window.localStorage.removeItem(KEY_BADGES);
+    const normalizedUser = normalizeUserId(userId);
+    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
+    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
+
+    window.localStorage.removeItem(pointsKey);
+    window.localStorage.removeItem(badgesKey);
+
+    if (normalizedUser) {
+      const owner = window.localStorage.getItem(KEY_OWNER);
+      if (owner === normalizedUser) {
+        window.localStorage.removeItem(KEY_OWNER);
+      }
+    }
   } catch (error) {
     console.error("[GAMIFICATION] Error limpiando localStorage:", error);
   }
@@ -123,8 +164,7 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
 
     const badges = achievementsError
       ? []
-      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) ||
-        [];
+      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) || [];
 
     if (!profileRow) {
       return {
@@ -286,7 +326,7 @@ export async function persistGamificationProgress(
 
 export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
-    const localSnapshot = readLocalGamificationData();
+    const localSnapshot = readLocalGamificationData(userId);
     const normalizedLocal: GamificationSnapshot = {
       points: normalizePoints(localSnapshot.points),
       badges: normalizeBadges(localSnapshot.badges),
@@ -334,6 +374,8 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
     );
 
     const migratedBadges = finalSnapshot.badges.filter(code => !remoteBadges.includes(code)).length;
+
+    writeLocalGamificationData(finalSnapshot, userId);
 
     return {
       success: true,

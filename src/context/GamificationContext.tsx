@@ -81,12 +81,15 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
   React.useEffect(() => {
     let cancelled = false;
-    const localStored = readLocalGamificationData();
+    const storageUserId = user?.id ?? null;
+    isBootstrappingRef.current = true;
+    setHydrated(false);
+    const localStored = readLocalGamificationData(storageUserId);
     const localSnapshot = mergeSnapshots(localStored.points, localStored.badges);
     remoteProfileExistsRef.current = false;
+    lastPersistedRef.current = null;
 
     const bootstrap = async () => {
-      isBootstrappingRef.current = true;
       let mergedPoints = localSnapshot.points;
       let mergedBadges = localSnapshot.badges;
 
@@ -151,7 +154,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
       const finalSnapshot = mergeSnapshots(mergedPoints, mergedBadges);
       applySnapshot(finalSnapshot);
-      writeLocalGamificationData(finalSnapshot);
+      writeLocalGamificationData(finalSnapshot, storageUserId);
       setHydrated(true);
       isBootstrappingRef.current = false;
       lastPersistedRef.current = {
@@ -164,7 +167,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       console.error("[GAMIFICATION] Error durante bootstrap:", error);
       if (!cancelled) {
         applySnapshot(localSnapshot);
-        writeLocalGamificationData(localSnapshot);
+        writeLocalGamificationData(localSnapshot, storageUserId);
         setHydrated(true);
         isBootstrappingRef.current = false;
         lastPersistedRef.current = {
@@ -183,8 +186,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     if (!hydrated) {
       return;
     }
-    writeLocalGamificationData(mergeSnapshots(points, badges));
-  }, [badges, hydrated, points]);
+    writeLocalGamificationData(mergeSnapshots(points, badges), user?.id ?? null);
+  }, [badges, hydrated, points, user?.id]);
 
   React.useEffect(() => {
     if (!hydrated || !user?.id || isBootstrappingRef.current) {
@@ -296,7 +299,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const reset = React.useCallback(async () => {
     const snapshot = mergeSnapshots(0, []);
     applySnapshot(snapshot);
-    writeLocalGamificationData(snapshot);
+    writeLocalGamificationData(snapshot, user?.id ?? null);
 
     if (user?.id) {
       try {
