@@ -69,10 +69,12 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const [points, setPointsState] = React.useState(0);
   const [badges, setBadgesState] = React.useState<string[]>([]);
   const [hydrated, setHydrated] = React.useState(false);
+  const [activeStorageUserId, setActiveStorageUserId] = React.useState<string | null>(null);
 
   const isBootstrappingRef = React.useRef(false);
   const lastPersistedRef = React.useRef<{ points: number; badgeKey: string } | null>(null);
   const remoteProfileExistsRef = React.useRef(false);
+  const activeStorageUserIdRef = React.useRef<string | null>(null);
 
   const applySnapshot = React.useCallback((snapshot: GamificationSnapshot) => {
     setPointsState(snapshot.points);
@@ -84,6 +86,8 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     const storageUserId = user?.id ?? null;
     isBootstrappingRef.current = true;
     setHydrated(false);
+    setActiveStorageUserId(storageUserId);
+    activeStorageUserIdRef.current = storageUserId;
     const localStored = readLocalGamificationData(storageUserId);
     const localSnapshot = mergeSnapshots(localStored.points, localStored.badges);
     remoteProfileExistsRef.current = false;
@@ -186,8 +190,12 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     if (!hydrated) {
       return;
     }
-    writeLocalGamificationData(mergeSnapshots(points, badges), user?.id ?? null);
-  }, [badges, hydrated, points, user?.id]);
+    if (isBootstrappingRef.current) {
+      return;
+    }
+
+    writeLocalGamificationData(mergeSnapshots(points, badges), activeStorageUserIdRef.current);
+  }, [badges, hydrated, points, activeStorageUserId]);
 
   React.useEffect(() => {
     if (!hydrated || !user?.id || isBootstrappingRef.current) {
@@ -299,7 +307,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const reset = React.useCallback(async () => {
     const snapshot = mergeSnapshots(0, []);
     applySnapshot(snapshot);
-    writeLocalGamificationData(snapshot, user?.id ?? null);
+    writeLocalGamificationData(snapshot, activeStorageUserIdRef.current);
 
     if (user?.id) {
       try {
