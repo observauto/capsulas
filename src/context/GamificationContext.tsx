@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "./AuthContext";
 import {
@@ -73,13 +72,21 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const [activeStorageUserId, setActiveStorageUserId] = React.useState<string | null>(null);
 
   const isBootstrappingRef = React.useRef(false);
-  const lastPersistedRef = React.useRef<{ points: number; badgeKey: string } | null>(null);
+  const lastPersistedRef = React.useRef<{ points: number; badgeKey: string; updatedAt: string | null } | null>(null);
   const remoteProfileExistsRef = React.useRef(false);
   const activeStorageUserIdRef = React.useRef<string | null>(null);
 
   const applySnapshot = React.useCallback((snapshot: GamificationSnapshot) => {
     setPointsState(snapshot.points);
     setBadgesState(snapshot.badges);
+  }, []);
+
+  const parseTimestamp = React.useCallback((value?: string | null) => {
+    if (!value) {
+      return 0;
+    }
+    const ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : 0;
   }, []);
 
   React.useEffect(() => {
@@ -89,14 +96,18 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     setHydrated(false);
     setActiveStorageUserId(storageUserId);
     activeStorageUserIdRef.current = storageUserId;
-    const localStored = readLocalGamificationData(storageUserId);
-    const localSnapshot = mergeSnapshots(localStored.points, localStored.badges);
+    const localRecord = readLocalGamificationData(storageUserId);
+    const localSnapshot = mergeSnapshots(localRecord.snapshot.points, localRecord.snapshot.badges);
+    const localUpdatedAtMs = parseTimestamp(localRecord.updatedAt);
+    const localLastUpdateMs = parseTimestamp(localRecord.lastLocalUpdate);
     remoteProfileExistsRef.current = false;
     lastPersistedRef.current = null;
 
     const bootstrap = async () => {
-      let mergedPoints = localSnapshot.points;
-      let mergedBadges = localSnapshot.badges;
+      let finalSnapshot = localSnapshot;
+      let finalUpdatedAt: string | null = localRecord.updatedAt;
+      let finalLastLocalUpdate: string | null = localRecord.lastLocalUpdate;
+      let shouldPersistRemote = false;
 
       if (user?.id) {
         try {
@@ -109,44 +120,34 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
             console.error("[GAMIFICATION] No se pudo cargar progreso remoto:", remoteResult.error);
           } else if (remoteResult.snapshot) {
             remoteProfileExistsRef.current = remoteResult.profileExists;
+            const remoteUpdatedAtIso = remoteResult.snapshot.updatedAt ?? new Date().toISOString();
+            const remoteUpdatedAtMs = parseTimestamp(remoteUpdatedAtIso);
             const remoteSnapshot = mergeSnapshots(
               remoteResult.snapshot.points,
               remoteResult.snapshot.badges,
             );
-            mergedPoints = Math.max(remoteSnapshot.points, mergedPoints);
-            mergedBadges = ensureMilestoneBadges(
-              mergedPoints,
-              [...remoteSnapshot.badges, ...mergedBadges],
-            );
+            const localReference = Math.max(localUpdatedAtMs, localLastUpdateMs);
 
-            const badgeKeyRemote = computeBadgeKey(remoteSnapshot.badges);
-            const badgeKeyMerged = computeBadgeKey(mergedBadges);
-
-            if (remoteSnapshot.points !== mergedPoints || badgeKeyRemote !== badgeKeyMerged) {
-              try {
-                await persistGamificationProgress(
-                  user.id,
-                  { points: mergedPoints, badges: mergedBadges },
-                  { email: user.email, name: user.name },
-                  { knownProfileExists: true },
-                );
-              } catch (error) {
-                console.error("[GAMIFICATION] Error persistiendo progreso fusionado:", error);
-              }
+            if (remoteUpdatedAtMs >= localReference) {
+              finalSnapshot = remoteSnapshot;
+              finalUpdatedAt = remoteUpdatedAtIso;
+              finalLastLocalUpdate = remoteUpdatedAtIso;
+            } else {
+              const mergedPoints = Math.max(remoteSnapshot.points, localSnapshot.points);
+              const mergedBadges = ensureMilestoneBadges(
+                mergedPoints,
+                [...remoteSnapshot.badges, ...localSnapshot.badges],
+              );
+              finalSnapshot = { points: mergedPoints, badges: mergedBadges };
+              finalUpdatedAt = null;
+              finalLastLocalUpdate = localRecord.lastLocalUpdate ?? new Date().toISOString();
+              shouldPersistRemote = true;
             }
           } else {
             remoteProfileExistsRef.current = remoteResult.profileExists;
-            try {
-              await persistGamificationProgress(
-                user.id,
-                { points: mergedPoints, badges: mergedBadges },
-                { email: user.email, name: user.name },
-                { knownProfileExists: false },
-              );
-              remoteProfileExistsRef.current = true;
-            } catch (error) {
-              console.error("[GAMIFICATION] Error creando progreso remoto inicial:", error);
-            }
+            shouldPersistRemote = finalSnapshot.points > 0 || finalSnapshot.badges.length > 0;
+            finalUpdatedAt = null;
+            finalLastLocalUpdate = localRecord.lastLocalUpdate ?? new Date().toISOString();
           }
         } catch (error) {
           console.error("[GAMIFICATION] Error cargando datos remotos:", error);
@@ -157,27 +158,60 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      const finalSnapshot = mergeSnapshots(mergedPoints, mergedBadges);
-      applySnapshot(finalSnapshot);
-      writeLocalGamificationData(finalSnapshot, storageUserId);
+      let persistedAt: string | null = null;
+
+      if (user?.id && shouldPersistRemote) {
+        try {
+          persistedAt = await persistGamificationProgress(
+            user.id,
+            finalSnapshot,
+            { email: user.email, name: user.name },
+            { knownProfileExists: remoteProfileExistsRef.current },
+          );
+          finalUpdatedAt = persistedAt;
+          finalLastLocalUpdate = persistedAt;
+          remoteProfileExistsRef.current = true;
+        } catch (error) {
+          console.error("[GAMIFICATION] Error persistiendo progreso fusionado:", error);
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      const normalizedSnapshot = mergeSnapshots(finalSnapshot.points, finalSnapshot.badges);
+      const lastLocalUpdateIso = finalLastLocalUpdate ?? new Date().toISOString();
+
+      applySnapshot(normalizedSnapshot);
+      writeLocalGamificationData(normalizedSnapshot, storageUserId, {
+        updatedAt: finalUpdatedAt,
+        lastLocalUpdate: lastLocalUpdateIso,
+      });
       setHydrated(true);
       isBootstrappingRef.current = false;
       lastPersistedRef.current = {
-        points: finalSnapshot.points,
-        badgeKey: computeBadgeKey(finalSnapshot.badges),
+        points: normalizedSnapshot.points,
+        badgeKey: computeBadgeKey(normalizedSnapshot.badges),
+        updatedAt: finalUpdatedAt ?? persistedAt,
       };
     };
 
     bootstrap().catch(error => {
       console.error("[GAMIFICATION] Error durante bootstrap:", error);
       if (!cancelled) {
+        const fallbackLastLocalUpdate = localRecord.lastLocalUpdate ?? new Date().toISOString();
         applySnapshot(localSnapshot);
-        writeLocalGamificationData(localSnapshot, storageUserId);
+        writeLocalGamificationData(localSnapshot, storageUserId, {
+          updatedAt: localRecord.updatedAt,
+          lastLocalUpdate: fallbackLastLocalUpdate,
+        });
         setHydrated(true);
         isBootstrappingRef.current = false;
         lastPersistedRef.current = {
           points: localSnapshot.points,
           badgeKey: computeBadgeKey(localSnapshot.badges),
+          updatedAt: localRecord.updatedAt,
         };
       }
     });
@@ -195,8 +229,14 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    writeLocalGamificationData(mergeSnapshots(points, badges), activeStorageUserIdRef.current);
-  }, [badges, hydrated, points, activeStorageUserId]);
+    const storageUserId = activeStorageUserIdRef.current ?? activeStorageUserId;
+    const snapshot = mergeSnapshots(points, badges);
+    const updatedAt = lastPersistedRef.current?.updatedAt ?? null;
+    writeLocalGamificationData(snapshot, storageUserId, {
+      updatedAt,
+      lastLocalUpdate: new Date().toISOString(),
+    });
+  }, [activeStorageUserId, badges, hydrated, points]);
 
   React.useEffect(() => {
     if (!hydrated || !user?.id || isBootstrappingRef.current) {
@@ -219,10 +259,14 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       { email: user.email, name: user.name },
       { knownProfileExists: remoteProfileExistsRef.current },
     )
-      .then(() => {
+      .then(persistedAt => {
         if (!cancelled) {
-          lastPersistedRef.current = { points: snapshot.points, badgeKey };
+          lastPersistedRef.current = { points: snapshot.points, badgeKey, updatedAt: persistedAt };
           remoteProfileExistsRef.current = true;
+          writeLocalGamificationData(snapshot, activeStorageUserIdRef.current, {
+            updatedAt: persistedAt,
+            lastLocalUpdate: persistedAt,
+          });
         }
       })
       .catch(error => {
@@ -308,18 +352,29 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const reset = React.useCallback(async () => {
     const snapshot = mergeSnapshots(0, []);
     applySnapshot(snapshot);
-    writeLocalGamificationData(snapshot, activeStorageUserIdRef.current);
+    writeLocalGamificationData(snapshot, activeStorageUserIdRef.current, {
+      updatedAt: null,
+      lastLocalUpdate: new Date().toISOString(),
+    });
 
     if (user?.id) {
       try {
-        await persistGamificationProgress(
+        const persistedAt = await persistGamificationProgress(
           user.id,
           snapshot,
           { email: user.email, name: user.name },
           { knownProfileExists: remoteProfileExistsRef.current },
         );
-        lastPersistedRef.current = { points: snapshot.points, badgeKey: computeBadgeKey(snapshot.badges) };
+        lastPersistedRef.current = {
+          points: snapshot.points,
+          badgeKey: computeBadgeKey(snapshot.badges),
+          updatedAt: persistedAt,
+        };
         remoteProfileExistsRef.current = true;
+        writeLocalGamificationData(snapshot, activeStorageUserIdRef.current, {
+          updatedAt: persistedAt,
+          lastLocalUpdate: persistedAt,
+        });
       } catch (error) {
         console.error("[GAMIFICATION] Error reseteando progreso:", error);
       }

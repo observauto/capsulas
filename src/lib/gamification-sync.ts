@@ -12,6 +12,12 @@ export type GamificationSnapshot = {
   badges: string[];
 };
 
+export type LocalGamificationRecord = {
+  snapshot: GamificationSnapshot;
+  updatedAt: string | null;
+  lastLocalUpdate: string | null;
+};
+
 export type FullSyncResult = {
   success: boolean;
   pointsMigrated: number;
@@ -24,13 +30,15 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-type LocalGamificationStore = {
-  version: 1;
-  users: Record<string, GamificationSnapshot>;
-  guest: GamificationSnapshot;
-};
-
 const STORE_VERSION = 1;
+
+type StoredGamificationEntry = LocalGamificationRecord;
+
+type LocalGamificationStore = {
+  version: typeof STORE_VERSION;
+  users: Record<string, StoredGamificationEntry>;
+  guest: StoredGamificationEntry;
+};
 
 function normalizePoints(value: unknown): number {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -58,18 +66,48 @@ function emptySnapshot(): GamificationSnapshot {
   return { points: 0, badges: [] };
 }
 
-function cloneSnapshot(snapshot: GamificationSnapshot): GamificationSnapshot {
+function sanitizeTimestamp(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function cloneSnapshot(snapshot?: GamificationSnapshot | null): GamificationSnapshot {
+  if (!snapshot) {
+    return emptySnapshot();
+  }
   return {
     points: normalizePoints(snapshot.points),
     badges: normalizeBadges(snapshot.badges),
   };
 }
 
-function createEmptyStore(): LocalGamificationStore {
+function emptyEntry(): StoredGamificationEntry {
   return {
-    version: STORE_VERSION,
-    users: {},
-    guest: emptySnapshot(),
+    snapshot: emptySnapshot(),
+    updatedAt: null,
+    lastLocalUpdate: null,
+  };
+}
+
+function cloneEntry(entry?: Partial<StoredGamificationEntry> | null): StoredGamificationEntry {
+  if (!entry) {
+    return emptyEntry();
+  }
+  return {
+    snapshot: cloneSnapshot(entry.snapshot ?? emptySnapshot()),
+    updatedAt: sanitizeTimestamp(entry.updatedAt),
+    lastLocalUpdate: sanitizeTimestamp(entry.lastLocalUpdate),
   };
 }
 
@@ -89,7 +127,11 @@ function persistStore(store: LocalGamificationStore): void {
 }
 
 function migrateLegacyStore(): LocalGamificationStore {
-  const store = createEmptyStore();
+  const store: LocalGamificationStore = {
+    version: STORE_VERSION,
+    users: {},
+    guest: emptyEntry(),
+  };
 
   if (!isBrowser()) {
     return store;
@@ -110,11 +152,16 @@ function migrateLegacyStore(): LocalGamificationStore {
 
     const legacyOwner = window.localStorage.getItem(LEGACY_OWNER_KEY);
     const normalizedOwner = normalizeUserId(legacyOwner);
+    const migratedEntry: StoredGamificationEntry = {
+      snapshot,
+      updatedAt: null,
+      lastLocalUpdate: nowIso(),
+    };
 
     if (normalizedOwner) {
-      store.users[normalizedOwner] = snapshot;
+      store.users[normalizedOwner] = migratedEntry;
     } else {
-      store.guest = snapshot;
+      store.guest = migratedEntry;
     }
   } catch (error) {
     console.error("[GAMIFICATION] Error migrando datos legacy de gamificación:", error);
@@ -125,7 +172,11 @@ function migrateLegacyStore(): LocalGamificationStore {
 
 function loadStore(): LocalGamificationStore {
   if (!isBrowser()) {
-    return createEmptyStore();
+    return {
+      version: STORE_VERSION,
+      users: {},
+      guest: emptyEntry(),
+    };
   }
 
   try {
@@ -138,18 +189,21 @@ function loadStore(): LocalGamificationStore {
 
     const parsed = JSON.parse(raw) as Partial<LocalGamificationStore> | null;
     if (!parsed || parsed.version !== STORE_VERSION || typeof parsed !== "object") {
-      const reset = createEmptyStore();
+      const reset: LocalGamificationStore = {
+        version: STORE_VERSION,
+        users: {},
+        guest: emptyEntry(),
+      };
       persistStore(reset);
       return reset;
     }
 
-    const sanitizedUsers: Record<string, GamificationSnapshot> = {};
-
+    const sanitizedUsers: Record<string, StoredGamificationEntry> = {};
     if (parsed.users && typeof parsed.users === "object") {
       for (const [key, value] of Object.entries(parsed.users)) {
         const normalizedKey = normalizeUserId(key) ?? key;
         if (typeof normalizedKey === "string" && normalizedKey.length > 0) {
-          sanitizedUsers[normalizedKey] = cloneSnapshot((value as GamificationSnapshot) ?? emptySnapshot());
+          sanitizedUsers[normalizedKey] = cloneEntry(value as StoredGamificationEntry);
         }
       }
     }
@@ -157,19 +211,23 @@ function loadStore(): LocalGamificationStore {
     return {
       version: STORE_VERSION,
       users: sanitizedUsers,
-      guest: parsed.guest ? cloneSnapshot(parsed.guest) : emptySnapshot(),
+      guest: cloneEntry(parsed.guest),
     };
   } catch (error) {
     console.error("[GAMIFICATION] Error cargando store local de gamificación:", error);
-    const fallback = createEmptyStore();
+    const fallback: LocalGamificationStore = {
+      version: STORE_VERSION,
+      users: {},
+      guest: emptyEntry(),
+    };
     persistStore(fallback);
     return fallback;
   }
 }
 
-export function readLocalGamificationData(userId?: string | null): GamificationSnapshot {
+export function readLocalGamificationData(userId?: string | null): LocalGamificationRecord {
   if (!isBrowser()) {
-    return emptySnapshot();
+    return emptyEntry();
   }
 
   try {
@@ -177,18 +235,21 @@ export function readLocalGamificationData(userId?: string | null): GamificationS
     const store = loadStore();
 
     if (normalizedUser) {
-      const stored = store.users[normalizedUser];
-      return stored ? cloneSnapshot(stored) : emptySnapshot();
+      return cloneEntry(store.users[normalizedUser]);
     }
 
-    return cloneSnapshot(store.guest);
+    return cloneEntry(store.guest);
   } catch (error) {
     console.error("[GAMIFICATION] Error leyendo snapshot local de gamificación:", error);
-    return emptySnapshot();
+    return emptyEntry();
   }
 }
 
-export function writeLocalGamificationData(snapshot: GamificationSnapshot, userId?: string | null): void {
+export function writeLocalGamificationData(
+  snapshot: GamificationSnapshot,
+  userId?: string | null,
+  meta?: Partial<Pick<LocalGamificationRecord, "updatedAt" | "lastLocalUpdate">>,
+): void {
   if (!isBrowser()) {
     return;
   }
@@ -196,12 +257,26 @@ export function writeLocalGamificationData(snapshot: GamificationSnapshot, userI
   try {
     const normalizedUser = normalizeUserId(userId);
     const store = loadStore();
-    const sanitized = cloneSnapshot(snapshot);
+    const sanitizedSnapshot = cloneSnapshot(snapshot);
+    const targetEntry = normalizedUser ? store.users[normalizedUser] : store.guest;
+    const existing = targetEntry ? cloneEntry(targetEntry) : emptyEntry();
+
+    const nextEntry: StoredGamificationEntry = {
+      snapshot: sanitizedSnapshot,
+      updatedAt:
+        meta && Object.prototype.hasOwnProperty.call(meta, "updatedAt")
+          ? sanitizeTimestamp(meta.updatedAt ?? null)
+          : existing.updatedAt,
+      lastLocalUpdate:
+        meta && Object.prototype.hasOwnProperty.call(meta, "lastLocalUpdate")
+          ? sanitizeTimestamp(meta.lastLocalUpdate ?? nowIso()) ?? nowIso()
+          : nowIso(),
+    };
 
     if (normalizedUser) {
-      store.users[normalizedUser] = sanitized;
+      store.users[normalizedUser] = nextEntry;
     } else {
-      store.guest = sanitized;
+      store.guest = nextEntry;
     }
 
     persistStore(store);
@@ -222,7 +297,7 @@ export function clearLocalGamificationData(userId?: string | null): void {
     if (normalizedUser) {
       delete store.users[normalizedUser];
     } else {
-      store.guest = emptySnapshot();
+      store.guest = emptyEntry();
     }
 
     persistStore(store);
@@ -234,7 +309,7 @@ export function clearLocalGamificationData(userId?: string | null): void {
 type RemoteGamificationLoad =
   | {
       status: "success";
-      snapshot: (GamificationSnapshot & { level: number }) | null;
+      snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null;
       profileExists: boolean;
     }
   | {
@@ -242,11 +317,19 @@ type RemoteGamificationLoad =
       error: string;
     };
 
+function parseTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> {
   try {
     const { data: profileRow, error: profileError } = await supabase
       .from("user_profiles")
-      .select("points, level")
+      .select("points, level, updated_at")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -269,7 +352,8 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
 
     const badges = achievementsError
       ? []
-      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) || [];
+      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) ||
+        [];
 
     if (!profileRow) {
       return {
@@ -285,6 +369,7 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
         points: normalizePoints(profileRow.points ?? 0),
         badges: normalizeBadges(badges),
         level: normalizePoints(profileRow.level ?? 1) || 1,
+        updatedAt: sanitizeTimestamp(profileRow.updated_at),
       },
       profileExists: true,
     };
@@ -389,10 +474,10 @@ export async function persistGamificationProgress(
   snapshot: GamificationSnapshot,
   metadata?: PersistMetadata,
   options?: PersistOptions,
-): Promise<void> {
+): Promise<string> {
   const points = normalizePoints(snapshot.points);
   const badges = normalizeBadges(snapshot.badges);
-  const timestamp = new Date().toISOString();
+  const timestamp = nowIso();
   const level = Math.max(1, Math.floor(points / 100) + 1);
 
   const basePayload: Record<string, string | number | null> = {
@@ -427,15 +512,14 @@ export async function persistGamificationProgress(
   }
 
   await ensureBadges(userId, badges);
+  return timestamp;
 }
 
 export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
-    const localSnapshot = readLocalGamificationData(userId);
-    const normalizedLocal: GamificationSnapshot = {
-      points: normalizePoints(localSnapshot.points),
-      badges: normalizeBadges(localSnapshot.badges),
-    };
+    const localRecord = readLocalGamificationData(userId);
+    const localSnapshot = cloneSnapshot(localRecord.snapshot);
+    const localLastUpdate = parseTimestamp(localRecord.lastLocalUpdate);
 
     const remoteResult = await loadGamificationDataFromSupabase(userId);
 
@@ -444,29 +528,61 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
         success: false,
         pointsMigrated: 0,
         badgesMigrated: 0,
-        finalPoints: normalizedLocal.points,
+        finalPoints: localSnapshot.points,
         error: remoteResult.error,
       };
     }
 
-    const remoteSnapshot = remoteResult.snapshot
-      ? {
-          points: normalizePoints(remoteResult.snapshot.points),
-          badges: normalizeBadges(remoteResult.snapshot.badges),
-        }
-      : null;
+    let remotePoints = 0;
+    let remoteBadges: string[] = [];
+    let remoteUpdatedAt = 0;
 
-    const remotePoints = remoteSnapshot?.points ?? 0;
-    const remoteBadges = remoteSnapshot?.badges ?? [];
+    if (remoteResult.snapshot) {
+      remotePoints = normalizePoints(remoteResult.snapshot.points);
+      remoteBadges = normalizeBadges(remoteResult.snapshot.badges);
+      remoteUpdatedAt = parseTimestamp(remoteResult.snapshot.updatedAt);
+    }
 
-    const finalSnapshot: GamificationSnapshot = remoteSnapshot
-      ? {
-          points: Math.max(remoteSnapshot.points, normalizedLocal.points),
-          badges: normalizeBadges([...remoteSnapshot.badges, ...normalizedLocal.badges]),
-        }
-      : normalizedLocal;
+    let finalSnapshot = cloneSnapshot(localSnapshot);
+    let shouldPersist = true;
 
-    await persistGamificationProgress(
+    if (remoteResult.snapshot) {
+      if (remoteUpdatedAt >= localLastUpdate) {
+        finalSnapshot = {
+          points: remotePoints,
+          badges: remoteBadges,
+        };
+        shouldPersist = false;
+        writeLocalGamificationData(finalSnapshot, userId, {
+          updatedAt: remoteResult.snapshot.updatedAt,
+          lastLocalUpdate: remoteResult.snapshot.updatedAt,
+        });
+        return {
+          success: true,
+          pointsMigrated: 0,
+          badgesMigrated: 0,
+          finalPoints: finalSnapshot.points,
+        };
+      }
+
+      finalSnapshot = {
+        points: Math.max(remotePoints, localSnapshot.points),
+        badges: normalizeBadges([...remoteBadges, ...localSnapshot.badges]),
+      };
+    } else {
+      shouldPersist = finalSnapshot.points > 0 || finalSnapshot.badges.length > 0;
+    }
+
+    if (!shouldPersist) {
+      return {
+        success: true,
+        pointsMigrated: 0,
+        badgesMigrated: 0,
+        finalPoints: finalSnapshot.points,
+      };
+    }
+
+    const persistedAt = await persistGamificationProgress(
       userId,
       finalSnapshot,
       {
@@ -478,9 +594,12 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
       },
     );
 
-    const migratedBadges = finalSnapshot.badges.filter(code => !remoteBadges.includes(code)).length;
+    writeLocalGamificationData(finalSnapshot, userId, {
+      updatedAt: persistedAt,
+      lastLocalUpdate: persistedAt,
+    });
 
-    writeLocalGamificationData(finalSnapshot, userId);
+    const migratedBadges = finalSnapshot.badges.filter(code => !remoteBadges.includes(code)).length;
 
     return {
       success: true,
