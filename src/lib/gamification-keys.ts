@@ -13,4 +13,3 @@ export function normalizeUserId(userId?: string | null): string | null {
   const trimmed = userId.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
-
