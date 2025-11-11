@@ -1,10 +1,9 @@
-export const KEY_POINTS = "oa_points";
-export const KEY_BADGES = "oa_badges";
-export const KEY_OWNER = "oa_gamification_owner";
+export const LEGACY_POINTS_KEY = "oa_points";
+export const LEGACY_BADGES_KEY = "oa_badges";
+export const LEGACY_OWNER_KEY = "oa_gamification_owner";
 
-export function buildGamificationKey(baseKey: string, userId: string | null): string {
-  return userId ? `${baseKey}::${userId}` : baseKey;
-}
+const STORAGE_PREFIX = "capsulas:gami";
+export const GAMIFICATION_STORE_KEY = `${STORAGE_PREFIX}:store:v1`;
 
 export function normalizeUserId(userId?: string | null): string | null {
   if (typeof userId !== "string") {

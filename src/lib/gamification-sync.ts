@@ -1,9 +1,9 @@
 import { supabase } from "./supabase";
 import {
-  KEY_BADGES,
-  KEY_OWNER,
-  KEY_POINTS,
-  buildGamificationKey,
+  GAMIFICATION_STORE_KEY,
+  LEGACY_BADGES_KEY,
+  LEGACY_OWNER_KEY,
+  LEGACY_POINTS_KEY,
   normalizeUserId,
 } from "./gamification-keys";
 
@@ -23,6 +23,14 @@ export type FullSyncResult = {
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
+
+type LocalGamificationStore = {
+  version: 1;
+  users: Record<string, GamificationSnapshot>;
+  guest: GamificationSnapshot;
+};
+
+const STORE_VERSION = 1;
 
 function normalizePoints(value: unknown): number {
   const numeric = typeof value === "number" ? value : Number(value);
@@ -46,34 +54,137 @@ function normalizeBadges(value: unknown): string[] {
   );
 }
 
-export function readLocalGamificationData(userId?: string | null): GamificationSnapshot {
+function emptySnapshot(): GamificationSnapshot {
+  return { points: 0, badges: [] };
+}
+
+function cloneSnapshot(snapshot: GamificationSnapshot): GamificationSnapshot {
+  return {
+    points: normalizePoints(snapshot.points),
+    badges: normalizeBadges(snapshot.badges),
+  };
+}
+
+function createEmptyStore(): LocalGamificationStore {
+  return {
+    version: STORE_VERSION,
+    users: {},
+    guest: emptySnapshot(),
+  };
+}
+
+function persistStore(store: LocalGamificationStore): void {
   if (!isBrowser()) {
-    return { points: 0, badges: [] };
+    return;
   }
 
   try {
-    const normalizedUser = normalizeUserId(userId);
-    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
-    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
+    window.localStorage.setItem(GAMIFICATION_STORE_KEY, JSON.stringify(store));
+    window.localStorage.removeItem(LEGACY_POINTS_KEY);
+    window.localStorage.removeItem(LEGACY_BADGES_KEY);
+    window.localStorage.removeItem(LEGACY_OWNER_KEY);
+  } catch (error) {
+    console.error("[GAMIFICATION] Error guardando store local de gamificación:", error);
+  }
+}
 
-    let storedPoints = window.localStorage.getItem(pointsKey);
-    let storedBadges = window.localStorage.getItem(badgesKey);
+function migrateLegacyStore(): LocalGamificationStore {
+  const store = createEmptyStore();
 
-    if (storedPoints === null && storedBadges === null && normalizedUser) {
-      const owner = window.localStorage.getItem(KEY_OWNER);
-      if (owner === normalizedUser) {
-        storedPoints = window.localStorage.getItem(KEY_POINTS);
-        storedBadges = window.localStorage.getItem(KEY_BADGES);
+  if (!isBrowser()) {
+    return store;
+  }
+
+  try {
+    const legacyPointsRaw = window.localStorage.getItem(LEGACY_POINTS_KEY);
+    const legacyBadgesRaw = window.localStorage.getItem(LEGACY_BADGES_KEY);
+
+    if (legacyPointsRaw === null && legacyBadgesRaw === null) {
+      return store;
+    }
+
+    const snapshot: GamificationSnapshot = {
+      points: legacyPointsRaw ? normalizePoints(legacyPointsRaw) : 0,
+      badges: legacyBadgesRaw ? normalizeBadges(JSON.parse(legacyBadgesRaw)) : [],
+    };
+
+    const legacyOwner = window.localStorage.getItem(LEGACY_OWNER_KEY);
+    const normalizedOwner = normalizeUserId(legacyOwner);
+
+    if (normalizedOwner) {
+      store.users[normalizedOwner] = snapshot;
+    } else {
+      store.guest = snapshot;
+    }
+  } catch (error) {
+    console.error("[GAMIFICATION] Error migrando datos legacy de gamificación:", error);
+  }
+
+  return store;
+}
+
+function loadStore(): LocalGamificationStore {
+  if (!isBrowser()) {
+    return createEmptyStore();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(GAMIFICATION_STORE_KEY);
+    if (!raw) {
+      const migrated = migrateLegacyStore();
+      persistStore(migrated);
+      return migrated;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<LocalGamificationStore> | null;
+    if (!parsed || parsed.version !== STORE_VERSION || typeof parsed !== "object") {
+      const reset = createEmptyStore();
+      persistStore(reset);
+      return reset;
+    }
+
+    const sanitizedUsers: Record<string, GamificationSnapshot> = {};
+
+    if (parsed.users && typeof parsed.users === "object") {
+      for (const [key, value] of Object.entries(parsed.users)) {
+        const normalizedKey = normalizeUserId(key) ?? key;
+        if (typeof normalizedKey === "string" && normalizedKey.length > 0) {
+          sanitizedUsers[normalizedKey] = cloneSnapshot((value as GamificationSnapshot) ?? emptySnapshot());
+        }
       }
     }
 
     return {
-      points: storedPoints ? normalizePoints(storedPoints) : 0,
-      badges: storedBadges ? normalizeBadges(JSON.parse(storedBadges)) : [],
+      version: STORE_VERSION,
+      users: sanitizedUsers,
+      guest: parsed.guest ? cloneSnapshot(parsed.guest) : emptySnapshot(),
     };
   } catch (error) {
-    console.error("[GAMIFICATION] Error leyendo localStorage:", error);
-    return { points: 0, badges: [] };
+    console.error("[GAMIFICATION] Error cargando store local de gamificación:", error);
+    const fallback = createEmptyStore();
+    persistStore(fallback);
+    return fallback;
+  }
+}
+
+export function readLocalGamificationData(userId?: string | null): GamificationSnapshot {
+  if (!isBrowser()) {
+    return emptySnapshot();
+  }
+
+  try {
+    const normalizedUser = normalizeUserId(userId);
+    const store = loadStore();
+
+    if (normalizedUser) {
+      const stored = store.users[normalizedUser];
+      return stored ? cloneSnapshot(stored) : emptySnapshot();
+    }
+
+    return cloneSnapshot(store.guest);
+  } catch (error) {
+    console.error("[GAMIFICATION] Error leyendo snapshot local de gamificación:", error);
+    return emptySnapshot();
   }
 }
 
@@ -84,21 +195,18 @@ export function writeLocalGamificationData(snapshot: GamificationSnapshot, userI
 
   try {
     const normalizedUser = normalizeUserId(userId);
-    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
-    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
-
-    window.localStorage.setItem(pointsKey, String(normalizePoints(snapshot.points)));
-    window.localStorage.setItem(badgesKey, JSON.stringify(normalizeBadges(snapshot.badges)));
+    const store = loadStore();
+    const sanitized = cloneSnapshot(snapshot);
 
     if (normalizedUser) {
-      window.localStorage.setItem(KEY_OWNER, normalizedUser);
-      window.localStorage.removeItem(KEY_POINTS);
-      window.localStorage.removeItem(KEY_BADGES);
+      store.users[normalizedUser] = sanitized;
     } else {
-      window.localStorage.removeItem(KEY_OWNER);
+      store.guest = sanitized;
     }
+
+    persistStore(store);
   } catch (error) {
-    console.error("[GAMIFICATION] Error escribiendo localStorage:", error);
+    console.error("[GAMIFICATION] Error escribiendo snapshot local de gamificación:", error);
   }
 }
 
@@ -109,20 +217,17 @@ export function clearLocalGamificationData(userId?: string | null): void {
 
   try {
     const normalizedUser = normalizeUserId(userId);
-    const pointsKey = buildGamificationKey(KEY_POINTS, normalizedUser);
-    const badgesKey = buildGamificationKey(KEY_BADGES, normalizedUser);
-
-    window.localStorage.removeItem(pointsKey);
-    window.localStorage.removeItem(badgesKey);
+    const store = loadStore();
 
     if (normalizedUser) {
-      const owner = window.localStorage.getItem(KEY_OWNER);
-      if (owner === normalizedUser) {
-        window.localStorage.removeItem(KEY_OWNER);
-      }
+      delete store.users[normalizedUser];
+    } else {
+      store.guest = emptySnapshot();
     }
+
+    persistStore(store);
   } catch (error) {
-    console.error("[GAMIFICATION] Error limpiando localStorage:", error);
+    console.error("[GAMIFICATION] Error limpiando datos locales de gamificación:", error);
   }
 }
 
