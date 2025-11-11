@@ -123,7 +123,8 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
 
     const badges = achievementsError
       ? []
-      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) || [];
+      : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) ||
+        [];
 
     if (!profileRow) {
       return {
