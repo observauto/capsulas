@@ -3,8 +3,19 @@
 
 import { FullCapsule, UserProgress, QuizResult } from "@/types/capsule";
 import { FULL_CAPSULES } from "@/data/fullCapsules";
+import {
+  clearUserScopedValue,
+  getStoredActiveUserId,
+  readUserScopedJSON,
+  writeUserScopedJSON,
+} from "./user-storage";
 
 const PROGRESS_STORAGE_KEY = "capsuleProgress";
+const PROGRESS_STORAGE_BASE = "capsuleProgress";
+
+function getActiveUserId(): string | null {
+  return getStoredActiveUserId();
+}
 
 interface ExtendedUserProgress extends UserProgress {
   completed?: boolean;
@@ -21,19 +32,18 @@ export function getFullCapsuleBySlug(slug: string): FullCapsule | undefined {
 
 function getAllProgress(): Record<string, ExtendedUserProgress> {
   if (typeof window === "undefined") return {};
-  try {
-    const stored = localStorage.getItem(PROGRESS_STORAGE_KEY);
-    if (!stored) return {};
-    return JSON.parse(stored);
-  } catch {
-    return {};
-  }
+  const stored = readUserScopedJSON<Record<string, ExtendedUserProgress>>(
+    PROGRESS_STORAGE_BASE,
+    getActiveUserId(),
+    PROGRESS_STORAGE_KEY,
+  );
+  return stored ?? {};
 }
 
 function saveAllProgress(p: Record<string, ExtendedUserProgress>) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(p));
+    writeUserScopedJSON(PROGRESS_STORAGE_BASE, p, getActiveUserId());
   } catch (e) {
     console.error("Error saving progress:", e);
   }
@@ -148,5 +158,5 @@ export function resetCapsuleProgress(slug: string) {
 
 export function resetAllProgress() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(PROGRESS_STORAGE_KEY);
+  clearUserScopedValue(PROGRESS_STORAGE_BASE, getActiveUserId());
 }

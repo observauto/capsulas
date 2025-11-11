@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, User } from '@/lib/supabase'
 import { fullSync } from '@/lib/gamification-sync'
+import { setActiveUserId } from '@/lib/user-storage'
 import { toast } from '@/hooks/use-toast'
 
 interface AuthContextType {
@@ -27,6 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedCode = localStorage.getItem('access_code_valid')
     setAccessCodeValid(savedCode === 'true')
   }, [])
+
+  useEffect(() => {
+    setActiveUserId(user?.id ?? null)
+  }, [user?.id])
 
   // Cargar usuario al iniciar
   useEffect(() => {

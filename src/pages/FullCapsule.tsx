@@ -16,6 +16,7 @@ import { useGamification } from "@/context/GamificationContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOnlyFavorites } from "@/context/OnlyFavoritesContext";
 import confetti from "canvas-confetti";
+import { readUserScopedJSON, writeUserScopedJSON } from "@/lib/user-storage";
 
 const SPONSORS: Sponsor[] = [
   {
@@ -43,6 +44,7 @@ const FullCapsule = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { addPoints, grantBadges } = useGamification();
   const [capsule, setCapsule] = useState(getFullCapsuleBySlug(slug || ""));
   const [loadTimestamp] = useState(new Date().toLocaleString("es-CO", {
     dateStyle: "long",
@@ -140,11 +142,9 @@ const FullCapsule = () => {
     if (!capsule) return;
 
     // 🎮 GAMIFICACIÓN: Calcular puntos y badges basados en la cápsula
-    const { addPoints, grantBadge, grantBadges } = useGamification();
-    
     // Puntos base por completar cápsula
     const basePoints = 100; // Puntos base por completar cualquier cápsula
-    const difficultyBonus = capsule.difficulty === "advanced" ? 50 : 
+    const difficultyBonus = capsule.difficulty === "advanced" ? 50 :
                            capsule.difficulty === "intermediate" ? 25 : 0;
     const totalPoints = basePoints + difficultyBonus;
     
@@ -155,7 +155,8 @@ const FullCapsule = () => {
     const badgesToGrant: string[] = [];
     
     // Badge por completar primera cápsula
-    const completedCapsules = JSON.parse(localStorage.getItem('completed_capsules') || '[]');
+    const completedCapsules =
+      readUserScopedJSON<string[]>("completed_capsules", user?.id, "completed_capsules") || [];
     if (completedCapsules.length === 0) {
       badgesToGrant.push('primera_capsula');
     }
@@ -193,7 +194,7 @@ const FullCapsule = () => {
     
     // Actualizar cápsulas completadas
     const updatedCompleted = [...completedCapsules, capsule.slug];
-    localStorage.setItem('completed_capsules', JSON.stringify(updatedCompleted));
+    writeUserScopedJSON("completed_capsules", updatedCompleted, user?.id);
     
     // 🎉 Celebración visual
     confetti({
