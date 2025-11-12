@@ -1,406 +1,98 @@
-import { supabase } from './supabase';
-import { KEY_POINTS, KEY_BADGES } from '@/context/GamificationContext';
+// Ruta del archivo: src/lib/gamification-sync.ts
 
-export interface LocalGamificationData {
-  points: number;
-  badges: string[];
+import { supabase } from "./supabase";
+import { readUserScopedJSON, writeUserScopedJSON, clearUserScopedValue } from "./user-storage";
+import { GAMIFICATION_STORE_KEY, LEGACY_BADGES_KEY, LEGACY_OWNER_KEY, LEGACY_POINTS_KEY, normalizeUserId } from "./gamification-keys";
+
+// --- TIPOS Y FUNCIONES INTERNAS ---
+export type GamificationSnapshot = { points: number; badges: string[]; };
+export type LocalGamificationRecord = { snapshot: GamificationSnapshot; updatedAt: string | null; lastLocalUpdate: string | null; };
+export type FullSyncResult = { success: boolean; pointsMigrated: number; badgesMigrated: number; finalPoints: number; error?: string; };
+
+const STORE_VERSION = 1;
+type StoredGamificationEntry = LocalGamificationRecord;
+type LocalGamificationStore = { version: typeof STORE_VERSION; users: Record<string, StoredGamificationEntry>; guest: StoredGamificationEntry; };
+const MILESTONE_BADGES = [{ code: "beginner", threshold: 100 }, { code: "intermediate", threshold: 500 }, { code: "expert", threshold: 1000 }] as const;
+
+// ✅ CORRECCIÓN: Función `ensureMilestoneBadges` movida aquí para ser compartida
+function ensureMilestoneBadges(points: number, badgesList: string[]): string[] {
+  const uniqueBadges = new Set(Array.isArray(badgesList) ? badgesList : []);
+  MILESTONE_BADGES.forEach(milestone => {
+    if (points >= milestone.threshold) {
+      uniqueBadges.add(milestone.code);
+    }
+  });
+  return Array.from(uniqueBadges);
 }
 
-/**
- * Obtiene datos de gamificación desde localStorage
- */
-export function getLocalGamificationData(): LocalGamificationData {
-  try {
-    const pointsStr = localStorage.getItem(KEY_POINTS);
-    const badgesStr = localStorage.getItem(KEY_BADGES);
-    
-    console.log('[EMERGENCY] localStorage raw:', { pointsStr, badgesStr });
-    
-    const points = pointsStr ? Number(pointsStr) : 0;
-    const badges = badgesStr ? JSON.parse(badgesStr) : [];
-    
-    return {
-      points: Number.isFinite(points) ? points : 0,
-      badges: Array.isArray(badges) ? badges : []
-    };
-  } catch (error) {
-    console.error('[EMERGENCY] Error reading localStorage:', error);
-    return { points: 0, badges: [] };
-  }
+// ✅ CORRECCIÓN: Función `mergeSnapshots` movida aquí y exportada
+export function mergeSnapshots(points: number, badges: string[]): GamificationSnapshot {
+  const safePoints = Math.max(0, Math.floor(points));
+  return {
+    points: safePoints,
+    badges: ensureMilestoneBadges(safePoints, badges),
+  };
 }
 
-/**
- * FUNCIÓN DE EMERGENCIA - Resetear puntos problemáticos
- * Solo usar si hay acumulación masiva de puntos por bugs
- */
-export async function emergencyResetPoints(userId: string): Promise<{
-  success: boolean;
-  finalPoints: number;
-  error?: string;
-}> {
-  console.log('[EMERGENCY] ¡INICIANDO RESET DE EMERGENCIA!');
-  console.log('[EMERGENCY] User ID:', userId);
+function isBrowser(): boolean { return typeof window !== "undefined" && typeof window.localStorage !== "undefined"; }
+function normalizePoints(value: unknown): number { const n = typeof value === "number" ? value : Number(value); return !Number.isFinite(n) || n < 0 ? 0 : Math.floor(n); }
+function normalizeBadges(value: unknown): string[] { if (!Array.isArray(value)) return []; return Array.from(new Set(value.filter((e): e is string => typeof e === "string").map(e => e.trim()).filter(e => e.length > 0))); }
+function emptySnapshot(): GamificationSnapshot { return { points: 0, badges: [] }; }
+function sanitizeTimestamp(v: unknown): string | null { if (typeof v !== "string") return null; const t = v.trim(); if (!t) return null; const m = Date.parse(t); return Number.isFinite(m) ? new Date(m).toISOString() : null; }
+function nowIso(): string { return new Date().toISOString(); }
+function cloneSnapshot(s?: GamificationSnapshot | null): GamificationSnapshot { return s ? { points: normalizePoints(s.points), badges: normalizeBadges(s.badges) } : emptySnapshot(); }
+function emptyEntry(): StoredGamificationEntry { return { snapshot: emptySnapshot(), updatedAt: null, lastLocalUpdate: null }; }
+function cloneEntry(e?: Partial<StoredGamificationEntry> | null): StoredGamificationEntry { return e ? { snapshot: cloneSnapshot(e.snapshot), updatedAt: sanitizeTimestamp(e.updatedAt), lastLocalUpdate: sanitizeTimestamp(e.lastLocalUpdate) } : emptyEntry(); }
+function persistStore(s: LocalGamificationStore): void { if (isBrowser()) try { localStorage.setItem(GAMIFICATION_STORE_KEY, JSON.stringify(s)); localStorage.removeItem(LEGACY_POINTS_KEY); localStorage.removeItem(LEGACY_BADGES_KEY); localStorage.removeItem(LEGACY_OWNER_KEY); } catch (e) { console.error(e); } }
+function loadStore(): LocalGamificationStore { if (!isBrowser()) return { version: 1, users: {}, guest: emptyEntry() }; try { const r = localStorage.getItem(GAMIFICATION_STORE_KEY); if (r) { const p = JSON.parse(r); if (p && typeof p === "object" && p.version === STORE_VERSION) { const u: Record<string, StoredGamificationEntry> = {}; if (p.users && typeof p.users === "object") Object.entries(p.users).forEach(([k, v]) => { const n = normalizeUserId(k) || k; if (typeof n === "string" && n.length > 0) u[n] = cloneEntry(v as StoredGamificationEntry); }); return { version: 1, users: u, guest: cloneEntry(p.guest) }; } } } catch { } return { version: 1, users: {}, guest: emptyEntry() }; }
+export function readLocalGamificationData(userId?: string | null): LocalGamificationRecord { if (!isBrowser()) return emptyEntry(); try { const n = normalizeUserId(userId); const s = loadStore(); return cloneEntry(n ? s.users[n] : s.guest); } catch (e) { console.error(e); return emptyEntry(); } }
+export function writeLocalGamificationData(snapshot: GamificationSnapshot, userId?: string | null, meta?: Partial<Pick<LocalGamificationRecord, "updatedAt" | "lastLocalUpdate">>): void { if (!isBrowser()) return; try { const n = normalizeUserId(userId); const s = loadStore(); const c = cloneSnapshot(snapshot); const t = n ? s.users[n] : s.guest; const i = t ? cloneEntry(t) : emptyEntry(); const o = { snapshot: c, updatedAt: meta?.hasOwnProperty("updatedAt") ? sanitizeTimestamp(meta.updatedAt) : i.updatedAt, lastLocalUpdate: meta?.hasOwnProperty("lastLocalUpdate") ? sanitizeTimestamp(meta.lastLocalUpdate ?? nowIso()) ?? nowIso() : nowIso() }; n ? s.users[n] = o : s.guest = o; persistStore(s); } catch (e) { console.error(e); } }
+export function clearLocalGamificationData(userId?: string | null): void { if (!isBrowser()) return; try { const n = normalizeUserId(userId); const s = loadStore(); n ? delete s.users[n] : s.guest = emptyEntry(); persistStore(s); } catch (e) { console.error(e); } }
+type RemoteGamificationLoad = { status: "success"; snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null; profileExists: boolean; } | { status: "error"; error: string; };
+export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> { try { const { data: p, error: e } = await supabase.from("user_profiles").select("points, level, updated_at").eq("user_id", userId).maybeSingle(); if (e) return { status: "error", error: e.message }; const { data: a, error: r } = await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id", userId); const t = r ? [] : a?.map(e => e.achievement?.achievement_code).filter((e): e is string => !!e) || []; return p ? { status: "success", snapshot: { points: normalizePoints(p.points), badges: normalizeBadges(t), level: normalizePoints(p.level), updatedAt: sanitizeTimestamp(p.updated_at) }, profileExists: true } : { status: "success", snapshot: null, profileExists: false }; } catch (e) { return { status: "error", error: e instanceof Error ? e.message : "Error desconocido" }; } }
+async function ensureBadges(userId: string, desiredBadges: string[]): Promise<number> { const u = normalizeBadges(desiredBadges); if (u.length === 0) return 0; const { data: e } = await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id", userId); const t = e?.map(r => r.achievement?.achievement_code).filter((c): c is string => !!c) || []; const n = u.filter(b => !t.includes(b)); if (n.length === 0) return 0; const { data: s, error: r } = await supabase.from("achievements").select("id, achievement_code").in("achievement_code", n); if (r || !s) return 0; const a = s.map(i => i ? { user_id: userId, achievement_id: i.id, earned_at: nowIso(), times_earned: 1 } : null).filter(Boolean); if (a.length === 0) return 0; const { error: i } = await supabase.from("user_achievements").insert(a); return i ? 0 : a.length; }
+export async function persistGamificationProgress(userId: string, snapshot: GamificationSnapshot, metadata?: { email?: string | null, name?: string | null }, options?: { knownProfileExists?: boolean }): Promise<string> { const p = normalizePoints(snapshot.points); const a = normalizeBadges(snapshot.badges); const t = nowIso(); const l = Math.max(1, Math.floor(p / 100) + 1); const d: Record<string, any> = { user_id: userId, points: p, level: l, updated_at: t }; if (!options?.knownProfileExists) d.role = "end_user"; if (metadata?.email) d.email = metadata.email; const n = metadata?.name?.trim(); if (n) d.name = n; const { error: i } = await supabase.from("user_profiles").upsert(d, { onConflict: "user_id" }); if (i) throw i; await ensureBadges(userId, a); return t; }
 
+export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
-    // Resetear puntos a un valor razonable (ej: 500 puntos)
-    const resetValue = 500;
-    const newLevel = Math.floor(resetValue / 100) + 1;
-
-    console.log('[EMERGENCY] Reseteando a:', resetValue, 'puntos');
-
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({
-        points: resetValue,
-        level: newLevel,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      throw new Error(`Reset failed: ${error.message}`);
-    }
-
-    // Limpiar localStorage también
-    clearLocalGamificationData();
-
-    console.log('[EMERGENCY] Reset completado exitosamente');
-    return { success: true, finalPoints: resetValue };
-
-  } catch (error: any) {
-    console.error('[EMERGENCY] Error en reset:', error);
-    return { success: false, finalPoints: 0, error: error.message };
-  }
-}
-
-/**
- * Limpia datos de gamificación de localStorage
- */
-export function clearLocalGamificationData() {
-  try {
-    console.log('[EMERGENCY] Limpiando localStorage...');
-    localStorage.removeItem(KEY_POINTS);
-    localStorage.removeItem(KEY_BADGES);
-    console.log('[EMERGENCY] localStorage limpiado');
-  } catch (error) {
-    console.error('[EMERGENCY] Error clearing localStorage:', error);
-  }
-}
-
-/**
- * SINCRONIZACIÓN FORZADA E INMEDIATA
- * Esta función se ejecuta SIEMPRE al hacer login y GARANTIZA que el perfil exista
- * CORREGIDO: Evita duplicación de puntos por doble sincronización
- */
-export async function forceSyncToSupabase(userId: string, userEmail: string): Promise<{
-  success: boolean;
-  pointsMigrated: number;
-  badgesMigrated: number;
-  finalPoints: number;
-  error?: string;
-}> {
-  console.log('=== [EMERGENCY] INICIANDO SINCRONIZACIÓN FORZADA ===');
-  console.log('[EMERGENCY] User ID:', userId);
-  console.log('[EMERGENCY] Email:', userEmail);
-
-  try {
-    // PASO 1: Leer datos locales
-    const localData = getLocalGamificationData();
-    console.log('[EMERGENCY] Datos locales:', localData);
-
-    // PASO 2: Verificar perfil existente
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from('user_profiles')
-      .select('id, user_id, points, level')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    console.log('[EMERGENCY] Perfil existente:', existingProfile);
-    console.log('[EMERGENCY] Error de búsqueda:', fetchError);
-
-    // DECISIÓN CRÍTICA: ¿Qué hacer con los puntos?
-    let finalPoints: number;
+    const guestRecord = readLocalGamificationData(null);
+    const userRecord = readLocalGamificationData(userId);
     
-    if (existingProfile) {
-      // CORREGIDO: Si el perfil existe, NO sumar puntos locales automáticamente
-      // Esto evita la acumulación exponencial por doble sincronización
-      finalPoints = existingProfile.points;
-      
-      console.log('[EMERGENCY] Perfil existe - usando puntos existentes:', finalPoints);
-      console.log('[EMERGENCY] Puntos locales ignorados para evitar duplicación:', localData.points);
-      
-      // Solo mostrar toast informativo si hay puntos locales que se pierden
-      if (localData.points > 0 && localData.points > 0) {
-        console.log('[EMERGENCY] NOTA: Puntos locales no se migraron para evitar duplicación');
-      }
-    } else {
-      // Si el perfil NO existe, es migración inicial - usar puntos locales
-      finalPoints = localData.points;
-      console.log('[EMERGENCY] Perfil nuevo - usando puntos locales:', finalPoints);
-    }
-    
-    const newLevel = Math.floor(finalPoints / 100) + 1;
-
-    console.log('[EMERGENCY] Puntos finales:', finalPoints);
-    console.log('[EMERGENCY] Nuevo nivel:', newLevel);
-
-    // PASO 3: UPSERT - Crear o actualizar perfil
-    console.log('[EMERGENCY] Ejecutando UPSERT del perfil...');
-    
-    const { data: upsertedProfile, error: upsertError } = await supabase
-      .from('user_profiles')
-      .upsert({
-        user_id: userId,
-        email: userEmail,
-        name: userEmail.split('@')[0],
-        role: 'end_user',
-        points: finalPoints,
-        level: newLevel,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
-
-    console.log('[EMERGENCY] Resultado UPSERT:', upsertedProfile);
-    console.log('[EMERGENCY] Error UPSERT:', upsertError);
-
-    if (upsertError) {
-      console.error('[EMERGENCY] ERROR CRÍTICO en UPSERT:', upsertError);
-      throw new Error(`UPSERT failed: ${upsertError.message}`);
+    const remoteResult = await loadGamificationDataFromSupabase(userId);
+    if (remoteResult.status === "error") {
+      return { success: false, pointsMigrated: 0, badgesMigrated: 0, finalPoints: 0, error: remoteResult.error };
     }
 
-    // PASO 4: VERIFICACIÓN - Leer el perfil de nuevo para confirmar
-    console.log('[EMERGENCY] Verificando que el perfil se guardó...');
-    
-    const { data: verifiedProfile, error: verifyError } = await supabase
-      .from('user_profiles')
-      .select('points, level')
-      .eq('user_id', userId)
-      .single();
+    const remoteSnapshot = remoteResult.snapshot ? mergeSnapshots(remoteResult.snapshot.points, remoteResult.snapshot.badges) : emptySnapshot();
+    const localGuestSnapshot = mergeSnapshots(guestRecord.snapshot.points, guestRecord.snapshot.badges);
+    const localUserSnapshot = mergeSnapshots(userRecord.snapshot.points, userRecord.snapshot.badges);
 
-    console.log('[EMERGENCY] Perfil verificado:', verifiedProfile);
-    console.log('[EMERGENCY] Error verificación:', verifyError);
+    const finalPoints = Math.max(remoteSnapshot.points, localGuestSnapshot.points, localUserSnapshot.points);
+    const finalBadges = normalizeBadges([...remoteSnapshot.badges, ...localGuestSnapshot.badges, ...localUserSnapshot.badges]);
+    const finalSnapshot = { points: finalPoints, badges: finalBadges };
 
-    if (verifyError || !verifiedProfile) {
-      console.error('[EMERGENCY] ERROR: No se pudo verificar el perfil');
-      throw new Error('Verification failed');
+    const guestCompletedCapsules = readUserScopedJSON<string[]>('completed_capsules', null) || [];
+    if (guestCompletedCapsules.length > 0) {
+      console.log(`[SYNC] Migrando ${guestCompletedCapsules.length} cápsulas de invitado...`);
+      const capsulePayload = guestCompletedCapsules.map(slug => ({ user_id: userId, capsule_slug: slug }));
+      const { error: capsuleError } = await supabase.from('user_completed_capsules').upsert(capsulePayload, { onConflict: 'user_id,capsule_slug' });
+      if (capsuleError) { console.error("[SYNC] Error al migrar cápsulas:", capsuleError); } 
+      else { clearUserScopedValue('completed_capsules', null); }
     }
 
-    if (verifiedProfile.points !== finalPoints) {
-      console.error('[EMERGENCY] ERROR: Los puntos no coinciden!');
-      console.error('[EMERGENCY] Esperado:', finalPoints, 'Obtenido:', verifiedProfile.points);
-      throw new Error('Points mismatch');
-    }
+    const persistedAt = await persistGamificationProgress(userId, finalSnapshot, { email: userEmail, name: userEmail?.split("@")[0] ?? null }, { knownProfileExists: remoteResult.profileExists });
 
-    console.log('[EMERGENCY] VERIFICACIÓN EXITOSA - Puntos confirmados:', verifiedProfile.points);
-
-    // PASO 5: Migrar badges/achievements si existen Y el perfil es nuevo
-    let badgesMigrated = 0;
-    if (!existingProfile && localData.badges.length > 0) {
-      console.log('[EMERGENCY] Migrando badges (perfil nuevo):', localData.badges);
-      
-      const { data: existingAchievements } = await supabase
-        .from('achievements')
-        .select('id, achievement_code')
-        .in('achievement_code', localData.badges);
-
-      if (existingAchievements && existingAchievements.length > 0) {
-        const newAchievements = existingAchievements.map(achievement => ({
-          user_id: userId,
-          achievement_id: achievement.id,
-          earned_at: new Date().toISOString(),
-          times_earned: 1
-        }));
-
-        const { error: achievementError } = await supabase
-          .from('user_achievements')
-          .insert(newAchievements);
-
-        if (!achievementError) {
-          badgesMigrated = newAchievements.length;
-          console.log('[EMERGENCY] Badges migrados:', badgesMigrated);
-        }
-      }
-    } else if (existingProfile) {
-      console.log('[EMERGENCY] Perfil existe - badges NO migrados para evitar duplicación');
-    }
-
-    // PASO 6: Limpiar localStorage SOLO si es migración inicial (perfil nuevo)
-    if (!existingProfile && localData.points > 0) {
-      console.log('[EMERGENCY] Limpiando localStorage después de migración exitosa...');
-      clearLocalGamificationData();
-    } else if (existingProfile && localData.points > 0) {
-      console.log('[EMERGENCY] localStorage NO limpiado - preservando datos locales');
-    }
-
-    console.log('=== [EMERGENCY] SINCRONIZACIÓN COMPLETADA EXITOSAMENTE ===');
-    console.log('[EMERGENCY] Puntos migrados:', !existingProfile ? localData.points : 0);
-    console.log('[EMERGENCY] Badges migrados:', badgesMigrated);
-    console.log('[EMERGENCY] Puntos finales en BD:', verifiedProfile.points);
+    writeLocalGamificationData(finalSnapshot, userId, { updatedAt: persistedAt, lastLocalUpdate: persistedAt });
+    clearLocalGamificationData(null);
 
     return {
       success: true,
-      pointsMigrated: !existingProfile ? localData.points : 0,
-      badgesMigrated,
-      finalPoints: verifiedProfile.points
-    };
-
-  } catch (error: any) {
-    console.error('=== [EMERGENCY] ERROR FATAL EN SINCRONIZACIÓN ===');
-    console.error('[EMERGENCY] Error:', error);
-    console.error('[EMERGENCY] Stack:', error?.stack);
-    
-    return {
-      success: false,
-      pointsMigrated: 0,
-      badgesMigrated: 0,
-      finalPoints: 0,
-      error: error?.message || 'Error desconocido'
-    };
-  }
-}
-
-/**
- * GARANTIZAR PERFIL - Se ejecuta SIEMPRE al login
- * Crea el perfil si no existe, incluso sin datos locales
- */
-export async function ensureUserProfile(userId: string, userEmail: string): Promise<boolean> {
-  console.log('[EMERGENCY] Garantizando que el perfil exista...');
-  
-  try {
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .upsert({
-        user_id: userId,
-        email: userEmail,
-        name: userEmail.split('@')[0],
-        role: 'end_user',
-        points: 0,
-        level: 1,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
-
-    console.log('[EMERGENCY] Perfil garantizado:', profile);
-    console.log('[EMERGENCY] Error:', error);
-
-    return !error;
-  } catch (error) {
-    console.error('[EMERGENCY] Error garantizando perfil:', error);
-    return false;
-  }
-}
-
-/**
- * SINCRONIZACIÓN COMPLETA - Combina garantizar perfil + sincronizar datos
- */
-export async function fullSync(userId: string, userEmail: string): Promise<{
-  success: boolean;
-  pointsMigrated: number;
-  badgesMigrated: number;
-  finalPoints: number;
-  error?: string;
-}> {
-  console.log('');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║  SINCRONIZACIÓN COMPLETA - INICIO                          ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  console.log('');
-
-  // PASO 1: Garantizar que el perfil exista
-  await ensureUserProfile(userId, userEmail);
-
-  // PASO 2: Sincronizar datos locales
-  const result = await forceSyncToSupabase(userId, userEmail);
-
-  console.log('');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║  SINCRONIZACIÓN COMPLETA - FIN                             ║');
-  console.log('║  Estado:', result.success ? 'EXITOSO' : 'FALLIDO', '                                    ║');
-  console.log('║  Puntos finales:', result.finalPoints, '                                   ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  console.log('');
-
-  return result;
-}
-
-
-/**
- * Carga datos de gamificación desde Supabase
- */
-export async function loadGamificationDataFromSupabase(userId: string): Promise<{
-  points: number;
-  badges: string[];
-  achievements: any[];
-  level: number;
-}> {
-  try {
-    // Cargar perfil
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('points, level')
-      .eq('user_id', userId)
-      .single();
-
-    // Cargar achievements
-    const { data: userAchievements } = await supabase
-      .from('user_achievements')
-      .select(`
-        *,
-        achievement:achievements(*)
-      `)
-      .eq('user_id', userId);
-
-    const badges = userAchievements?.map(
-      ua => ua.achievement?.achievement_code
-    ).filter(Boolean) || [];
-
-    return {
-      points: profile?.points || 0,
-      badges,
-      achievements: userAchievements || [],
-      level: profile?.level || 1
+      pointsMigrated: Math.max(0, finalPoints - remoteSnapshot.points),
+      badgesMigrated: finalBadges.filter(b => !remoteSnapshot.badges.includes(b)).length,
+      finalPoints: finalPoints,
     };
   } catch (error) {
-    console.error('Error loading gamification data from Supabase:', error);
-    return {
-      points: 0,
-      badges: [],
-      achievements: [],
-      level: 1
-    };
-  }
-}
-
-/**
- * Actualiza puntos en Supabase
- */
-export async function updatePointsInSupabase(userId: string, points: number): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({
-        points,
-        level: Math.floor(points / 100) + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Error updating points:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error updating points in Supabase:', error);
-    return false;
+    console.error("[GAMIFICATION] Error durante sincronización completa:", error);
+    return { success: false, pointsMigrated: 0, badgesMigrated: 0, finalPoints: 0, error: error instanceof Error ? error.message : "Error desconocido" };
   }
 }

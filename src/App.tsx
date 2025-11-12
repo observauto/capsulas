@@ -1,81 +1,42 @@
-import AccessGate from "@/components/AccessGate";
-import InternalPlatform from "@/components/InternalPlatform";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
-import FullCapsule from "./pages/FullCapsule";
-import Gamificacion from "./pages/Gamificacion";
-import NotFound from "./pages/NotFound";
-import { RootLayout } from "@/layouts/RootLayout";
-import { GamificationProvider } from "@/context/GamificationContext";
-import { AuthProvider } from "@/context/AuthContext";
-import { OnlyFavoritesProvider } from "@/context/OnlyFavoritesContext";
-import BackofficeDashboard from "@/components/backoffice/BackofficeDashboard";
-import UnificadoDashboard from "@/components/UnificadoDashboard";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+// Ruta del archivo: src/App.tsx
+// ** ATENCIÓN: Corregida la línea 5 para usar una importación nombrada
+// ** en lugar de una importación por defecto para RootLayout.
 
-const queryClient = new QueryClient();
+import { BrowserRouter as Router } from 'react-router-dom';
+// ✅ CORRECCIÓN: Se cambió de 'import RootLayout' a 'import { RootLayout }'
+import { RootLayout } from './layouts/RootLayout';
+import { useAuth } from './context/AuthContext';
+// ✅ CORRECCIÓN: AccessGate se exporta por defecto, así que NO usa llaves
+import AccessGate from './components/AccessGate'; 
+import { RefreshCw } from 'lucide-react';
 
-// Feature flag (default ON). Set VITE_USE_GLOBAL_LAYOUT=false to fall back to legacy per-page header/footer.
-const useGlobalLayout = import.meta.env?.VITE_USE_GLOBAL_LAYOUT !== "false";
+function App() {
+  // Obtenemos los estados del AuthContext
+  const { loading, accessCodeValid } = useAuth();
 
-// Componente de redirección
-const GamificacionRedirect = () => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate('/backoffice');
-  }, [navigate]);
-  return null;
-};
+  // 1. Si el contexto está en su carga inicial (comprobando auth Y código "013")
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <RefreshCw className="h-10 w-10 mx-auto animate-spin text-primary" />
+          <p className="mt-4 text-lg text-gray-700">Verificando acceso...</p>
+        </div>
+      </div>
+    );
+  }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <OnlyFavoritesProvider>
-              <GamificationProvider>
-                {/* AccessGate es la capa externa - solo maneja código "013" */}
-              <AccessGate>
-                {/* InternalPlatform es la capa interna - maneja Google Sign-In, UserGuide, paneles */}
-                <InternalPlatform>
-                  {useGlobalLayout ? (
-                    <RootLayout>
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/capsulas/:slug" element={<FullCapsule />} />
-                        <Route path="/gamificacion" element={<GamificacionRedirect />} />
-                        <Route path="/backoffice" element={<UnificadoDashboard />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </RootLayout>
-                  ) : (
-                    // Legacy mode: pages still include their own Navbar/Footer (will be removed in future)
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/capsulas/:slug" element={<FullCapsule />} />
-                      <Route path="/gamificacion" element={<GamificacionRedirect />} />
-                      <Route path="/backoffice" element={<UnificadoDashboard />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  )}
-                </InternalPlatform>
-              </AccessGate>
-              </GamificationProvider>
-            </OnlyFavoritesProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+  // 2. Si la carga terminó Y el código "013" NO es válido
+  if (!accessCodeValid) {
+    return <AccessGate />;
+  }
+
+  // 3. Si la carga terminó Y el código "013" SÍ es válido
+  return (
+    <Router>
+      <RootLayout />
+    </Router>
+  );
+}
 
 export default App;

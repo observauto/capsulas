@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, User, Mail, Phone, MapPin, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { writeUserScopedJSON } from '@/lib/user-storage';
+import { useAuth } from '@/context/AuthContext';
 
 interface UserProfile {
   id: string;
@@ -38,6 +40,8 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ open, onOpenChange, profile, onProfileUpdate }: EditProfileModalProps) {
+  const { user } = useAuth();
+  const activeUserId = user?.id ?? null;
   const [formData, setFormData] = useState({
     name: profile.name || '',
     email: profile.email || '',
@@ -148,8 +152,8 @@ export default function EditProfileModal({ open, onOpenChange, profile, onProfil
         avatar: formData.avatar || undefined
       };
 
-      // Guardar en localStorage
-      localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+      // Guardar en almacenamiento local del usuario actual
+      writeUserScopedJSON('userProfile', updatedProfile, activeUserId);
 
       // Actualizar estado en el componente padre
       onProfileUpdate(updatedProfile);
