@@ -1,6 +1,6 @@
 // Ruta del archivo: src/components/AccessGate.tsx
-// ** ATENCIÓN: Gráficos 100% revertidos al original.
-// ** Solo se ha corregido la importación de la línea 11 para que Vercel pueda compilar.
+// ** ATENCIÓN: Gráficos 100% REVERTIDOS a un layout simple.
+// ** Eliminado el video, los fondos con blur y los gradientes.
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { Shield, KeyRound, AlertTriangle } from 'lucide-react';
-// ✅ CORRECCIÓN DE BUILD (Línea 11): Cambiado de 'default' a 'named' import.
-import { SponsorLogo } from './SponsorLogo'; 
+import { SponsorLogo } from './SponsorLogo'; // Mantenemos la importación corregida
 
 export default function AccessGate() {
   const [code, setCode] = useState('');
@@ -25,49 +24,37 @@ export default function AccessGate() {
     }
   };
 
-  // ❌ Gráficos revertidos a tu layout original (el que yo modifiqué).
+  // Layout simple (como en la captura de pantalla)
+  // Fondo oscuro y una tarjeta simple.
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4">
-      {/* Fondo de Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute top-0 left-0 w-full h-full object-cover -z-20"
-        poster="https-observauto.com/wp-content/uploads/2024/07/THUMBNAIL-CAPSULAS-OBSERVAUTO-scaled.jpg"
-      >
-        <source src="https://player.vimeo.com/progressive_redirect/playback/971556606/rendition/1080p/file.mp4?loc=external&log_user=0&signature=971d0c6b12a0d636b0d1e85f09456109913101861014167e419010374e89f8f4" type="video/mp4" />
-      </video>
-      {/* Overlay Oscuro */}
-      <div className="absolute top-0 left-0 w-full h-full bg-black/70 -z-10"></div>
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-gray-900 text-white">
       
-      {/* Tarjeta de Acceso */}
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 text-white">
+      {/* Tarjeta de Acceso Simple */}
+      <Card className="w-full max-w-md bg-gray-800 border-gray-700 text-white">
         <CardHeader className="text-center">
           <SponsorLogo 
             src="/BYD-Logo-White-PNG.png"
             alt="Logo Observauto" 
-            className="h-12 w-auto mx-auto mb-4"
+            className="h-10 w-auto mx-auto mb-4"
           />
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
             <Shield className="h-6 w-6" />
             Acceso Restringido
           </CardTitle>
-          <CardDescription className="pt-2 text-gray-300">
+          <CardDescription className="pt-2 text-gray-400">
             Este es un despliegue de prueba. Por favor, introduce el código de acceso.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-300" />
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 type="password"
                 placeholder="Código de Acceso"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="pl-10 h-12 text-lg bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:ring-blue-500"
+                className="pl-10 h-12 text-lg bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
                 aria-label="Código de Acceso"
               />
             </div>
@@ -81,7 +68,7 @@ export default function AccessGate() {
             
             <Button 
               type="submit" 
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white hover:opacity-90"
+              className="w-full h-12 text-base font-semibold bg-blue-600 text-white hover:bg-blue-700"
             >
               Validar Acceso
             </Button>

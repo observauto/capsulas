@@ -1,7 +1,8 @@
 // Ruta del archivo: src/context/AuthContext.tsx
-// ** ATENCIÓN: Lógica de useEffect separada para eliminar el bucle infinito.
+// ** ATENCIÓN: Corrección del bucle infinito usando useRef para 'isSyncing'
+// ** y estabilizando el useCallback de handleDataSync.
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'; // Importar useRef
 import { supabase, User } from '@/lib/supabase';
 import { fullSync, FullSyncResult } from '@/lib/gamification-sync';
 import { setActiveUserId } from '@/lib/user-storage';
@@ -25,9 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); 
   const [isSyncing, setIsSyncing] = useState(false);
   const [accessCodeValid, setAccessCodeValid] = useState(false);
+  
+  // ✅ CORRECCIÓN DE BUCLE: Usamos una ref para 'isSyncing'
+  // Esto evita que 'handleDataSync' cambie en cada render.
+  const isSyncingRef = useRef(isSyncing);
+  useEffect(() => {
+    isSyncingRef.current = isSyncing;
+  }, [isSyncing]);
 
   // 1. Efecto de Carga Inicial (SOLO SE EJECUTA UNA VEZ)
-  // Lee el localStorage UNA VEZ al montar el componente.
   useEffect(() => {
     console.log("[AUTH] Montando AuthProvider. Verificando código '013' inicial.");
     try {
@@ -36,12 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setAccessCodeValid(false);
     }
-  }, []); // <-- Array de dependencias vacío es crucial.
+  }, []); // <-- Correcto: Array de dependencias vacío.
 
-  // Función de Sincronización (envuelta en useCallback para estabilidad)
+  // Función de Sincronización
+  // ✅ CORRECCIÓN DE BUCLE:
+  // - Ahora usa 'isSyncingRef.current' para leer el estado.
+  // - El array de dependencias ahora es '[]' (vacío).
+  // - Esto hace que 'handleDataSync' sea una función ESTABLE.
   const handleDataSync = useCallback(async (userId: string, userEmail: string) => {
-    if (isSyncing) return;
-    setIsSyncing(true);
+    if (isSyncingRef.current) return; // Leer desde la ref
+    setIsSyncing(true); // Escribir al estado
     console.log('[AUTH] Iniciando sincronización de datos...');
     try {
       const syncPromise = fullSync(userId, userEmail);
@@ -58,27 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('[AUTH] Error en sincronización:', error.message);
     } finally {
-      setIsSyncing(false);
+      setIsSyncing(false); // Escribir al estado
       window.dispatchEvent(new CustomEvent('gamification:syncComplete'));
       console.log('[AUTH] Sincronización finalizada.');
     }
-  }, [isSyncing]); // Depende solo de 'isSyncing'
+  }, []); // ✅ CORRECCIÓN: Array vacío hace la función estable.
 
   // 2. Efecto de Reacción a la Autenticación
-  // Se ejecuta CADA VEZ que 'accessCodeValid' cambia.
   useEffect(() => {
     setLoading(true);
     
-    // Si el código "013" NO es válido, detenemos la carga.
     if (!accessCodeValid) {
       console.log("[AUTH] Access Gate '013' no validado. Deteniendo carga.");
       setUser(null);
       setActiveUserId(null);
-      setLoading(false); // Terminamos la carga
-      return; // No suscribir a Supabase
+      setLoading(false);
+      return; 
     }
 
-    // Si el código "013" SÍ es válido, procedemos a verificar la sesión de Supabase
     console.log("[AUTH] Access Gate '013' validado. Obteniendo sesión actual...");
 
     // 1. OBTENER LA SESIÓN ACTUAL (getSession)
@@ -99,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setActiveUserId(null);
       }
-      setLoading(false); // Terminamos la carga INICIAL
+      setLoading(false); 
     }).catch((err) => {
       console.error("[AUTH] Error en getSession()", err);
       setUser(null);
@@ -112,7 +120,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH] Evento de auth (listener):', event, { hasSession: !!session });
 
-        // Ignoramos el evento inicial, ya lo manejamos con getSession()
         if (event === 'INITIAL_SESSION') {
           return;
         }
@@ -143,7 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[AUTH] Limpiando suscripción de Supabase.");
       subscription.unsubscribe();
     };
-  }, [accessCodeValid, handleDataSync]); // ✅ CORRECCIÓN: Dependencia estable.
+    // ✅ CORRECCIÓN DE BUCLE: 'handleDataSync' ahora es estable
+  }, [accessCodeValid, handleDataSync]); 
 
   const signInWithGoogle = async () => {
     // ... (Sin cambios) ...
@@ -167,8 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isValid) {
       try {
         localStorage.setItem('access_code_valid', 'true');
-        // ✅ Esto disparará el 'useEffect[accessCodeValid]' de arriba
-        // para que se ejecute de nuevo, esta vez con 'codeValid = true'.
         setAccessCodeValid(true); 
       } catch (error) {
         console.error("Error guardando 'access_code_valid' en localStorage:", error);
