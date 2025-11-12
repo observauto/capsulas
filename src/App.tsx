@@ -1,13 +1,10 @@
 // Ruta del archivo: src/App.tsx
-// ** ATENCIÓN: Corregida la línea 5 para usar una importación nombrada
-// ** en lugar de una importación por defecto para RootLayout.
+// ** ATENCIÓN: Este archivo ahora implementa la lógica del Access Gate "013" **
 
 import { BrowserRouter as Router } from 'react-router-dom';
-// ✅ CORRECCIÓN: Se cambió de 'import RootLayout' a 'import { RootLayout }'
-import { RootLayout } from './layouts/RootLayout';
+import RootLayout from './layouts/RootLayout';
 import { useAuth } from './context/AuthContext';
-// ✅ CORRECCIÓN: AccessGate se exporta por defecto, así que NO usa llaves
-import AccessGate from './components/AccessGate'; 
+import AccessGate from './components/AccessGate';
 import { RefreshCw } from 'lucide-react';
 
 function App() {
