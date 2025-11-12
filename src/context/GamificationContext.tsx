@@ -8,23 +8,8 @@ import {
   persistGamificationProgress,
   readLocalGamificationData,
   writeLocalGamificationData,
+  mergeSnapshots, // ✅ CORRECCIÓN: Importar la función compartida
 } from "@/lib/gamification-sync";
-
-const MILESTONE_BADGES = [
-  { code: "beginner", threshold: 100 },
-  { code: "intermediate", threshold: 500 },
-  { code: "expert", threshold: 1000 },
-] as const;
-
-function ensureMilestoneBadges(points: number, badgesList: string[]): string[] {
-  const uniqueBadges = new Set(Array.isArray(badgesList) ? badgesList : []);
-  MILESTONE_BADGES.forEach(milestone => {
-    if (points >= milestone.threshold) {
-      uniqueBadges.add(milestone.code);
-    }
-  });
-  return Array.from(uniqueBadges);
-}
 
 type GamificationContextValue = {
   points: number;
@@ -39,14 +24,6 @@ type GamificationContextValue = {
 };
 
 const GamificationContext = createContext<GamificationContextValue | null>(null);
-
-function mergeSnapshots(points: number, badges: string[]): GamificationSnapshot {
-  const safePoints = Math.max(0, Math.floor(points));
-  return {
-    points: safePoints,
-    badges: ensureMilestoneBadges(safePoints, badges),
-  };
-}
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const { user, isSyncing } = useAuth();
@@ -72,7 +49,6 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       if (isSyncing) {
         console.log('[GAMIFICATION] Esperando fin de sincronización de AuthContext...');
         isBootstrapping.current = false;
-        // No marcamos isLoading como false para que espere al siguiente render
         return;
       }
 
@@ -109,13 +85,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
     bootstrap();
     
-    // Escuchar el evento de finalización de sincronización
-    window.addEventListener('gamification:syncComplete', bootstrap);
+    const syncCompleteListener = () => bootstrap();
+    window.addEventListener('gamification:syncComplete', syncCompleteListener);
 
     return () => {
       cancelled = true;
       isBootstrapping.current = false;
-      window.removeEventListener('gamification:syncComplete', bootstrap);
+      window.removeEventListener('gamification:syncComplete', syncCompleteListener);
     };
   }, [user, isSyncing, applySnapshot]);
 
@@ -134,11 +110,15 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   const addPoints = useCallback((delta: number) => {
     setPointsState(prevPoints => {
       const newPoints = Math.max(0, Math.floor(prevPoints + delta));
-      const newBadges = ensureMilestoneBadges(newPoints, badges);
-      updateAndPersist(newPoints, newBadges);
+      // Obtenemos el estado más reciente de los badges para la actualización
+      setBadgesState(prevBadges => {
+        const newBadges = mergeSnapshots(newPoints, prevBadges).badges;
+        updateAndPersist(newPoints, newBadges);
+        return newBadges;
+      });
       return newPoints;
     });
-  }, [badges, updateAndPersist]);
+  }, [updateAndPersist]);
   
   const subtractPoints = useCallback((delta: number) => {
     addPoints(-Math.abs(delta));
