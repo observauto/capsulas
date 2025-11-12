@@ -1,7 +1,5 @@
 // Ruta del archivo: src/context/AuthContext.tsx
-// ** ATENCIÓN: Corregido el bucle infinito eliminando 'loading' del
-// ** array de dependencias del useEffect principal (línea 89) y 
-// ** añadiendo 'accessCodeValid'.
+// ** ATENCIÓN: Lógica de useEffect separada para eliminar el bucle infinito.
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, User } from '@/lib/supabase';
@@ -28,31 +26,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [accessCodeValid, setAccessCodeValid] = useState(false);
 
-  // 1. Función para comprobar el código de acceso desde localStorage
-  const checkAccessCode = useCallback(() => {
+  // 1. Efecto de Carga Inicial (SOLO SE EJECUTA UNA VEZ)
+  // Lee el localStorage UNA VEZ al montar el componente.
+  useEffect(() => {
+    console.log("[AUTH] Montando AuthProvider. Verificando código '013' inicial.");
     try {
       const storedCodeValid = localStorage.getItem('access_code_valid') === 'true';
       setAccessCodeValid(storedCodeValid);
-      return storedCodeValid;
     } catch {
       setAccessCodeValid(false);
-      return false;
     }
-  }, []);
+  }, []); // <-- Array de dependencias vacío es crucial.
 
-  // 2. Comprobación de estado inicial (Auth y Access Code)
-  // ✅ CORRECCIÓN CLAVE: El array de dependencias ahora es [accessCodeValid, checkAccessCode]
-  // Esto asegura que el hook se ejecute UNA VEZ al inicio, y UNA VEZ MÁS
-  // si 'accessCodeValid' cambia (es decir, cuando el usuario introduce "013").
+  // 2. Efecto de Reacción a la Autenticación
+  // Se ejecuta CADA VEZ que 'accessCodeValid' cambia.
   useEffect(() => {
     setLoading(true);
     
-    // Comprobamos el código "013" solo si aún no está validado en el estado
-    const codeValid = accessCodeValid || checkAccessCode();
-    
-    if (!codeValid) {
+    // Si el código "013" NO es válido, detenemos la carga.
+    if (!accessCodeValid) {
       console.log("[AUTH] Access Gate '013' no validado. Deteniendo carga.");
       setUser(null);
+      setActiveUserId(null);
       setLoading(false); // Terminamos la carga
       return; // No suscribir a Supabase
     }
@@ -98,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
       clearTimeout(authTimeout);
     };
-  }, [accessCodeValid, checkAccessCode]); // ✅ CORRECCIÓN: Dependencias corregidas.
+  }, [accessCodeValid]); // ✅ CORRECCIÓN: Dependencia ÚNICA.
 
   const handleDataSync = async (userId: string, userEmail: string) => {
     // ... (Sin cambios) ...
@@ -148,8 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isValid) {
       try {
         localStorage.setItem('access_code_valid', 'true');
-        // ✅ Esto disparará el 'useEffect' de arriba para que se
-        // ejecute de nuevo, esta vez con 'codeValid = true'.
+        // ✅ Esto disparará el 'useEffect[accessCodeValid]' de arriba
+        // para que se ejecute de nuevo, esta vez con 'codeValid = true'.
         setAccessCodeValid(true); 
       } catch (error) {
         console.error("Error guardando 'access_code_valid' en localStorage:", error);
