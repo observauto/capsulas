@@ -4,7 +4,6 @@ import { supabase } from "./supabase";
 import { readUserScopedJSON, writeUserScopedJSON, clearUserScopedValue } from "./user-storage";
 import { GAMIFICATION_STORE_KEY, LEGACY_BADGES_KEY, LEGACY_OWNER_KEY, LEGACY_POINTS_KEY, normalizeUserId } from "./gamification-keys";
 
-// --- TIPOS Y FUNCIONES INTERNAS (SIN CAMBIOS) ---
 export type GamificationSnapshot = { points: number; badges: string[]; };
 export type LocalGamificationRecord = { snapshot: GamificationSnapshot; updatedAt: string | null; lastLocalUpdate: string | null; };
 export type FullSyncResult = { success: boolean; pointsMigrated: number; badgesMigrated: number; finalPoints: number; error?: string; };
@@ -13,27 +12,226 @@ const STORE_VERSION = 1;
 type StoredGamificationEntry = LocalGamificationRecord;
 type LocalGamificationStore = { version: typeof STORE_VERSION; users: Record<string, StoredGamificationEntry>; guest: StoredGamificationEntry; };
 
-function isBrowser(): boolean { return typeof window !== "undefined" && typeof window.localStorage !== "undefined"; }
-function normalizePoints(value: unknown): number { const numeric = typeof value === "number" ? value : Number(value); if (!Number.isFinite(numeric) || numeric < 0) { return 0; } return Math.floor(numeric); }
-function normalizeBadges(value: unknown): string[] { if (!Array.isArray(value)) { return []; } return Array.from(new Set(value.filter((entry): entry is string => typeof entry === "string").map(entry => entry.trim()).filter(entry => entry.length > 0))); }
-function emptySnapshot(): GamificationSnapshot { return { points: 0, badges: [] }; }
-function sanitizeTimestamp(value: unknown): string | null { if (typeof value !== "string") { return null; } const trimmed = value.trim(); if (!trimmed) { return null; } const ms = Date.parse(trimmed); return Number.isFinite(ms) ? new Date(ms).toISOString() : null; }
-function nowIso(): string { return new Date().toISOString(); }
-function cloneSnapshot(snapshot?: GamificationSnapshot | null): GamificationSnapshot { if (!snapshot) { return emptySnapshot(); } return { points: normalizePoints(snapshot.points), badges: normalizeBadges(snapshot.badges), }; }
-function emptyEntry(): StoredGamificationEntry { return { snapshot: emptySnapshot(), updatedAt: null, lastLocalUpdate: null, }; }
-function cloneEntry(entry?: Partial<StoredGamificationEntry> | null): StoredGamificationEntry { if (!entry) { return emptyEntry(); } return { snapshot: cloneSnapshot(entry.snapshot ?? emptySnapshot()), updatedAt: sanitizeTimestamp(entry.updatedAt), lastLocalUpdate: sanitizeTimestamp(entry.lastLocalUpdate), }; }
-function persistStore(store: LocalGamificationStore): void { if (!isBrowser()) { return; } try { window.localStorage.setItem(GAMIFICATION_STORE_KEY, JSON.stringify(store)); window.localStorage.removeItem(LEGACY_POINTS_KEY); window.localStorage.removeItem(LEGACY_BADGES_KEY); window.localStorage.removeItem(LEGACY_OWNER_KEY); } catch (error) { console.error("[GAMIFICATION] Error guardando store local:", error); } }
-function migrateLegacyStore(): LocalGamificationStore { /* ... (sin cambios, código original) ... */ return { version: 1, users: {}, guest: emptyEntry() }; }
-function loadStore(): LocalGamificationStore { if (!isBrowser()) return { version: 1, users: {}, guest: emptyEntry() }; try { const r=localStorage.getItem(GAMIFICATION_STORE_KEY); if(r) {const p=JSON.parse(r); if(p&&"object"==typeof p&&p.version===STORE_VERSION) {const s={}; p.users&&"object"==typeof p.users&&Object.entries(p.users).forEach(([k,v])=>{const n=normalizeUserId(k)||k; "string"==typeof n&&n.length>0&&(s[n]=cloneEntry(v as StoredGamificationEntry))}); return {version:1,users:s,guest:cloneEntry(p.guest)}})}catch{} return {version:1,users:{},guest:emptyEntry()}}
-export function readLocalGamificationData(userId?: string | null): LocalGamificationRecord { if (!isBrowser()) { return emptyEntry(); } try { const n = normalizeUserId(userId); const s = loadStore(); return cloneEntry(n ? s.users[n] : s.guest); } catch (e) { console.error(e); return emptyEntry(); } }
-export function writeLocalGamificationData(snapshot: GamificationSnapshot, userId?: string | null, meta?: Partial<Pick<LocalGamificationRecord, "updatedAt" | "lastLocalUpdate">>): void { if (!isBrowser()) return; try { const n = normalizeUserId(userId); const s = loadStore(); const c = cloneSnapshot(snapshot); const t = n ? s.users[n] : s.guest; const i = t ? cloneEntry(t) : emptyEntry(); const o = { snapshot: c, updatedAt: meta && Object.prototype.hasOwnProperty.call(meta, "updatedAt") ? sanitizeTimestamp(meta.updatedAt) : i.updatedAt, lastLocalUpdate: meta && Object.prototype.hasOwnProperty.call(meta, "lastLocalUpdate") ? sanitizeTimestamp(meta.lastLocalUpdate ?? nowIso()) ?? nowIso() : nowIso() }; n ? s.users[n] = o : s.guest = o; persistStore(s); } catch (e) { console.error(e); } }
-export function clearLocalGamificationData(userId?: string | null): void { if (!isBrowser()) return; try { const n = normalizeUserId(userId); const s = loadStore(); n ? delete s.users[n] : s.guest = emptyEntry(); persistStore(s); } catch (e) { console.error(e); } }
-type RemoteGamificationLoad = { status: "success"; snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null; profileExists: boolean; } | { status: "error"; error: string; };
-export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> { try { const {data: p, error: e} = await supabase.from("user_profiles").select("points, level, updated_at").eq("user_id", userId).maybeSingle(); if (e) return {status: "error", error: e.message}; const {data: a, error: r} = await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id", userId); const t = r ? [] : a?.map(e=>e.achievement?.achievement_code).filter((e): e is string=>!!e) || []; return p ? {status: "success", snapshot: {points: normalizePoints(p.points), badges: normalizeBadges(t), level: normalizePoints(p.level), updatedAt: sanitizeTimestamp(p.updated_at)}, profileExists: !0} : {status: "success", snapshot: null, profileExists: !1}; } catch (e) { return {status: "error", error: e instanceof Error ? e.message : "Error desconocido"}; } }
-async function ensureBadges(userId: string, desiredBadges: string[]): Promise<number> { const u=normalizeBadges(desiredBadges);if(0===u.length)return 0;const e=(await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id",userId)).data?.map(e=>e.achievement?.achievement_code).filter((e):e is string=>!!e)||[],t=u.filter(t=>!e.includes(t));if(0===t.length)return 0;const{data:s,error:r}=await supabase.from("achievements").select("id, achievement_code").in("achievement_code",t);if(r)return 0;const a=(s||[]).map(e=>e?{user_id:userId,achievement_id:e.id,earned_at:new Date().toISOString(),times_earned:1}:null).filter(Boolean);return a.length?(await supabase.from("user_achievements").insert(a)).error?0:a.length:0}
-export async function persistGamificationProgress(userId: string, snapshot: GamificationSnapshot, metadata?: {email?: string|null, name?: string|null}, options?: {knownProfileExists?: boolean}): Promise<string> { const p=normalizePoints(snapshot.points),a=normalizeBadges(snapshot.badges),t=nowIso(),e=Math.max(1,Math.floor(p/100)+1),s={user_id:userId,points:p,level:e,updated_at:t};options?.knownProfileExists||(s.role="end_user"),metadata?.email&&(s.email=metadata.email);const r=metadata?.name?.trim();r&&(s.name=r);const{error:i}=await supabase.from("user_profiles").upsert(s,{onConflict:"user_id"});if(i)throw i;await ensureBadges(userId,a);return t}
+function isBrowser(): boolean {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
 
-// --- FUNCIÓN `fullSync` MODIFICADA ---
+function normalizePoints(value: unknown): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    return 0;
+  }
+  return Math.floor(numeric);
+}
+
+function normalizeBadges(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map(entry => entry.trim())
+        .filter(entry => entry.length > 0),
+    ),
+  );
+}
+
+function emptySnapshot(): GamificationSnapshot {
+  return { points: 0, badges: [] };
+}
+
+function sanitizeTimestamp(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function cloneSnapshot(snapshot?: GamificationSnapshot | null): GamificationSnapshot {
+  if (!snapshot) {
+    return emptySnapshot();
+  }
+  return {
+    points: normalizePoints(snapshot.points),
+    badges: normalizeBadges(snapshot.badges),
+  };
+}
+
+function emptyEntry(): StoredGamificationEntry {
+  return {
+    snapshot: emptySnapshot(),
+    updatedAt: null,
+    lastLocalUpdate: null,
+  };
+}
+
+function cloneEntry(entry?: Partial<StoredGamificationEntry> | null): StoredGamificationEntry {
+  if (!entry) {
+    return emptyEntry();
+  }
+  return {
+    snapshot: cloneSnapshot(entry.snapshot ?? emptySnapshot()),
+    updatedAt: sanitizeTimestamp(entry.updatedAt),
+    lastLocalUpdate: sanitizeTimestamp(entry.lastLocalUpdate),
+  };
+}
+
+function persistStore(store: LocalGamificationStore): void {
+  if (!isBrowser()) { return; }
+  try {
+    window.localStorage.setItem(GAMIFICATION_STORE_KEY, JSON.stringify(store));
+    window.localStorage.removeItem(LEGACY_POINTS_KEY);
+    window.localStorage.removeItem(LEGACY_BADGES_KEY);
+    window.localStorage.removeItem(LEGACY_OWNER_KEY);
+  } catch (error) {
+    console.error("[GAMIFICATION] Error guardando store local:", error);
+  }
+}
+
+function migrateLegacyStore(): LocalGamificationStore {
+  const store: LocalGamificationStore = { version: STORE_VERSION, users: {}, guest: emptyEntry() };
+  if (!isBrowser()) { return store; }
+  try {
+    const legacyPointsRaw = window.localStorage.getItem(LEGACY_POINTS_KEY);
+    const legacyBadgesRaw = window.localStorage.getItem(LEGACY_BADGES_KEY);
+    if (legacyPointsRaw === null && legacyBadgesRaw === null) { return store; }
+    const snapshot: GamificationSnapshot = { points: legacyPointsRaw ? normalizePoints(legacyPointsRaw) : 0, badges: legacyBadgesRaw ? normalizeBadges(JSON.parse(legacyBadgesRaw)) : [], };
+    const legacyOwner = window.localStorage.getItem(LEGACY_OWNER_KEY);
+    const normalizedOwner = normalizeUserId(legacyOwner);
+    const migratedEntry: StoredGamificationEntry = { snapshot, updatedAt: null, lastLocalUpdate: nowIso(), };
+    if (normalizedOwner) { store.users[normalizedOwner] = migratedEntry; } else { store.guest = migratedEntry; }
+  } catch (error) { console.error("[GAMIFICATION] Error migrando datos legacy:", error); }
+  return store;
+}
+
+function loadStore(): LocalGamificationStore {
+  if (!isBrowser()) { return { version: STORE_VERSION, users: {}, guest: emptyEntry(), }; }
+  try {
+    const raw = window.localStorage.getItem(GAMIFICATION_STORE_KEY);
+    if (!raw) {
+      const migrated = migrateLegacyStore();
+      persistStore(migrated);
+      return migrated;
+    }
+    const parsed = JSON.parse(raw) as Partial<LocalGamificationStore> | null;
+    if (!parsed || parsed.version !== STORE_VERSION || typeof parsed !== "object") {
+      const reset: LocalGamificationStore = { version: STORE_VERSION, users: {}, guest: emptyEntry(), };
+      persistStore(reset);
+      return reset;
+    }
+    const sanitizedUsers: Record<string, StoredGamificationEntry> = {};
+    if (parsed.users && typeof parsed.users === "object") {
+      for (const [key, value] of Object.entries(parsed.users)) {
+        const normalizedKey = normalizeUserId(key) ?? key;
+        if (typeof normalizedKey === "string" && normalizedKey.length > 0) {
+          sanitizedUsers[normalizedKey] = cloneEntry(value as StoredGamificationEntry);
+        }
+      }
+    }
+    return { version: STORE_VERSION, users: sanitizedUsers, guest: cloneEntry(parsed.guest), };
+  } catch (error) {
+    console.error("[GAMIFICATION] Error cargando store local:", error);
+    const fallback: LocalGamificationStore = { version: STORE_VERSION, users: {}, guest: emptyEntry(), };
+    persistStore(fallback);
+    return fallback;
+  }
+}
+
+export function readLocalGamificationData(userId?: string | null): LocalGamificationRecord {
+  if (!isBrowser()) { return emptyEntry(); }
+  try {
+    const normalizedUser = normalizeUserId(userId);
+    const store = loadStore();
+    return cloneEntry(normalizedUser ? store.users[normalizedUser] : store.guest);
+  } catch (error) {
+    console.error("[GAMIFICATION] Error leyendo snapshot local:", error);
+    return emptyEntry();
+  }
+}
+
+export function writeLocalGamificationData(snapshot: GamificationSnapshot, userId?: string | null, meta?: Partial<Pick<LocalGamificationRecord, "updatedAt" | "lastLocalUpdate">>): void {
+  if (!isBrowser()) return;
+  try {
+    const normalizedUser = normalizeUserId(userId);
+    const store = loadStore();
+    const sanitizedSnapshot = cloneSnapshot(snapshot);
+    const targetEntry = normalizedUser ? store.users[normalizedUser] : store.guest;
+    const existing = targetEntry ? cloneEntry(targetEntry) : emptyEntry();
+    const nextEntry: StoredGamificationEntry = {
+      snapshot: sanitizedSnapshot,
+      updatedAt: meta && Object.prototype.hasOwnProperty.call(meta, "updatedAt") ? sanitizeTimestamp(meta.updatedAt) : existing.updatedAt,
+      lastLocalUpdate: meta && Object.prototype.hasOwnProperty.call(meta, "lastLocalUpdate") ? sanitizeTimestamp(meta.lastLocalUpdate ?? nowIso()) ?? nowIso() : nowIso(),
+    };
+    if (normalizedUser) { store.users[normalizedUser] = nextEntry; } else { store.guest = nextEntry; }
+    persistStore(store);
+  } catch (e) { console.error(e); }
+}
+
+export function clearLocalGamificationData(userId?: string | null): void {
+  if (!isBrowser()) return;
+  try {
+    const normalizedUser = normalizeUserId(userId);
+    const store = loadStore();
+    if (normalizedUser) { delete store.users[normalizedUser]; } else { store.guest = emptyEntry(); }
+    persistStore(store);
+  } catch (e) { console.error(e); }
+}
+
+type RemoteGamificationLoad = { status: "success"; snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null; profileExists: boolean; } | { status: "error"; error: string; };
+
+export async function loadGamificationDataFromSupabase(userId: string): Promise<RemoteGamificationLoad> {
+  try {
+    const { data: profileRow, error: profileError } = await supabase.from("user_profiles").select("points, level, updated_at").eq("user_id", userId).maybeSingle();
+    if (profileError) { return { status: "error", error: profileError.message }; }
+    const { data: achievementsData, error: achievementsError } = await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id", userId);
+    const badges = achievementsError ? [] : achievementsData?.map(r => r.achievement?.achievement_code).filter((c): c is string => !!c) || [];
+    if (!profileRow) { return { status: "success", snapshot: null, profileExists: false }; }
+    return { status: "success", snapshot: { points: normalizePoints(profileRow.points), badges: normalizeBadges(badges), level: normalizePoints(profileRow.level), updatedAt: sanitizeTimestamp(profileRow.updated_at) }, profileExists: true };
+  } catch (e) { return { status: "error", error: e instanceof Error ? e.message : "Error desconocido" }; }
+}
+
+async function ensureBadges(userId: string, desiredBadges: string[]): Promise<number> {
+  const uniqueDesired = normalizeBadges(desiredBadges);
+  if (uniqueDesired.length === 0) return 0;
+  const { data: existingData } = await supabase.from("user_achievements").select("achievement:achievements(achievement_code)").eq("user_id", userId);
+  const existingBadges = existingData?.map(r => r.achievement?.achievement_code).filter((c): c is string => !!c) || [];
+  const missingBadges = uniqueDesired.filter(b => !existingBadges.includes(b));
+  if (missingBadges.length === 0) return 0;
+  const { data: achievements, error: achievementsError } = await supabase.from("achievements").select("id, achievement_code").in("achievement_code", missingBadges);
+  if (achievementsError || !achievements) return 0;
+  const payload = achievements.map(a => ({ user_id: userId, achievement_id: a.id, earned_at: nowIso(), times_earned: 1 }));
+  if (payload.length === 0) return 0;
+  const { error: insertError } = await supabase.from("user_achievements").insert(payload);
+  return insertError ? 0 : payload.length;
+}
+
+export async function persistGamificationProgress(userId: string, snapshot: GamificationSnapshot, metadata?: {email?: string|null, name?: string|null}, options?: {knownProfileExists?: boolean}): Promise<string> {
+  const points = normalizePoints(snapshot.points);
+  const badges = normalizeBadges(snapshot.badges);
+  const timestamp = nowIso();
+  const level = Math.max(1, Math.floor(points / 100) + 1);
+  const payload: Record<string, any> = { user_id: userId, points, level, updated_at: timestamp };
+  if (!options?.knownProfileExists) { payload.role = "end_user"; }
+  if (metadata?.email) { payload.email = metadata.email; }
+  const trimmedName = metadata?.name?.trim();
+  if (trimmedName) { payload.name = trimmedName; }
+  const { error: upsertError } = await supabase.from("user_profiles").upsert(payload, { onConflict: "user_id" });
+  if (upsertError) throw upsertError;
+  await ensureBadges(userId, badges);
+  return timestamp;
+}
+
 export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
   try {
     const guestRecord = readLocalGamificationData(null);
@@ -55,20 +253,10 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
     const guestCompletedCapsules = readUserScopedJSON<string[]>('completed_capsules', null) || [];
     if (guestCompletedCapsules.length > 0) {
       console.log(`[SYNC] Migrando ${guestCompletedCapsules.length} cápsulas de invitado...`);
-      const capsulePayload = guestCompletedCapsules.map(slug => ({
-        user_id: userId,
-        capsule_slug: slug,
-      }));
-      
-      const { error: capsuleError } = await supabase
-        .from('user_completed_capsules')
-        .upsert(capsulePayload, { onConflict: 'user_id,capsule_slug' });
-
-      if (capsuleError) {
-        console.error("[SYNC] Error al migrar cápsulas:", capsuleError);
-      } else {
-        clearUserScopedValue('completed_capsules', null);
-      }
+      const capsulePayload = guestCompletedCapsules.map(slug => ({ user_id: userId, capsule_slug: slug }));
+      const { error: capsuleError } = await supabase.from('user_completed_capsules').upsert(capsulePayload, { onConflict: 'user_id,capsule_slug' });
+      if (capsuleError) { console.error("[SYNC] Error al migrar cápsulas:", capsuleError); } 
+      else { clearUserScopedValue('completed_capsules', null); }
     }
 
     const persistedAt = await persistGamificationProgress(
