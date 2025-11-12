@@ -1,6 +1,6 @@
 // Ruta del archivo: src/components/AccessGate.tsx
-// ** ATENCIÓN: Este es el componente del Access Gate que tenías.
-// ** Lo incluyo para asegurarnos de que está presente y correcto.
+// ** ATENCIÓN: Corregida la línea 11 para usar una importación nombrada
+// ** en lugar de una importación por defecto para SponsorLogo.
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { Shield, KeyRound, AlertTriangle } from 'lucide-react';
-import SponsorLogo from './SponsorLogo'; // Importamos SponsorLogo
+// ✅ CORRECCIÓN: Se cambió de 'import SponsorLogo' a 'import { SponsorLogo }'
+import { SponsorLogo } from './SponsorLogo'; // Importamos SponsorLogo
 
 export default function AccessGate() {
   const [code, setCode] = useState('');
