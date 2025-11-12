@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Footer } from "@/components/Footer";
 import { SponsorStrip } from "@/components/SponsorStrip";
 import { RegistrationModal } from "@/components/RegistrationModal";
-import { Sponsor } from "@/types/capsule";
+import { Sponsor, FullCapsule } from "@/types/capsule";
 import { WizardMode } from "@/components/WizardMode";
 import { ArticleMode } from "@/components/ArticleMode";
 import { getFullCapsuleBySlug } from "@/lib/capsulesRepo";
@@ -22,7 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { readUserScopedJSON, writeUserScopedJSON } from "@/lib/user-storage";
 
 const SPONSORS: Sponsor[] = [ { name: "BYD", logoUrl: "/BYD-Logo-White-PNG.png", link: "https://www.byd.com", accentColor: "#00447c" } ];
-const COMPLETED_CAPSULES_KEY = 'completed_capsules'; // Clave para localStorage
+const COMPLETED_CAPSULES_KEY = 'completed_capsules';
 
 const FullCapsule = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -50,7 +50,20 @@ const FullCapsule = () => {
         checkCompletion();
     }, [user, slug]);
 
-    const handleShare = async () => { /* ... (sin cambios) ... */ };
+    const handleShare = async () => {
+        if (!capsule) return;
+        const shareData = { title: capsule.title, text: `Descubre "${capsule.title}" en ObservAuto Cápsulas`, url: window.location.href };
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                toast({ title: "¡Copiado!", description: "Enlace copiado al portapapeles" });
+            }
+        } catch (err) { 
+            console.error("Share error:", err);
+        }
+    };
 
     const completeCapsuleAsGuest = () => {
         if (!capsule) return;
@@ -59,7 +72,7 @@ const FullCapsule = () => {
             const updatedCapsules = [...guestCapsules, capsule.slug];
             writeUserScopedJSON(COMPLETED_CAPSULES_KEY, updatedCapsules, null);
             setIsCompleted(true);
-            toast({ title: "Progreso Guardado Localmente", description: "Inicia sesión para sincronizar tu progreso." });
+            toast({ title: "Progreso Guardado Localmente", description: "Inicia sesión para sincronizar tu progreso y ganar puntos." });
             window.dispatchEvent(new CustomEvent('gamification:update'));
             setTimeout(() => navigate("/"), 2000);
         } else {
@@ -78,7 +91,12 @@ const FullCapsule = () => {
 
         const { error: insertError } = await supabase.from('user_completed_capsules').insert({ user_id: user.id, capsule_slug: capsule.slug });
         if (insertError) {
-            toast({ title: "Error", description: insertError.code === '23505' ? "Ya has completado esta cápsula." : "No se pudo guardar tu progreso.", variant: "destructive" });
+            if (insertError.code === '23505') { 
+                toast({ title: "Error", description: "Ya has completado esta cápsula." });
+                setIsCompleted(true); // Sincroniza el estado local si la DB ya lo tenía
+            } else {
+                toast({ title: "Error", description: "No se pudo guardar tu progreso.", variant: "destructive" });
+            }
             return;
         }
         
@@ -109,11 +127,15 @@ const FullCapsule = () => {
   
     const handleContinueWithoutRegistration = () => {
         setShowRegistrationModal(false);
-        completeCapsuleAsGuest(); // Guardar progreso localmente
+        completeCapsuleAsGuest();
     };
   
     if (!capsule) {
-        return ( <div>Cápsula no encontrada</div> );
+        return (
+            <div className="flex min-h-screen items-center justify-center">
+                <p>Cápsula no encontrada.</p>
+            </div>
+        );
     }
 
     return (
@@ -124,7 +146,10 @@ const FullCapsule = () => {
                     <div className="p-4 md:p-6 pb-3 md:pb-4">
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2 flex-wrap"><h1 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">{capsule.title}</h1>{isCompleted && (<Badge variant="secondary" className="flex items-center gap-1 text-xs"><CheckCircle2 className="h-3 w-3" />Completada</Badge>)}</div>
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">{capsule.title}</h1>
+                                    {isCompleted && (<Badge variant="secondary" className="flex items-center gap-1 text-xs"><CheckCircle2 className="h-3 w-3" />Completada</Badge>)}
+                                </div>
                                 {capsule.mode === "article" && (<p className="text-muted-foreground text-sm md:text-base leading-relaxed">{capsule.summary}</p>)}
                                 {capsule.difficulty && (<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary mt-2">{capsule.difficulty === "beginner" ? "🌱 Principiante" : capsule.difficulty === "intermediate" ? "⚡ Intermedio" : "🏆 Avanzado"}</span>)}
                             </div>
