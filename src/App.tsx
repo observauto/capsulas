@@ -1,8 +1,10 @@
 // Ruta del archivo: src/App.tsx
-// ** ATENCIÓN: Este archivo ahora implementa la lógica del Access Gate "013" **
+// ** ATENCIÓN: Corregida la línea 5 para usar una importación nombrada
+// ** en lugar de una importación por defecto para RootLayout.
 
 import { BrowserRouter as Router } from 'react-router-dom';
-import RootLayout from './layouts/RootLayout';
+// ✅ CORRECCIÓN: Se cambió de 'import RootLayout' a 'import { RootLayout }'
+import { RootLayout } from './layouts/RootLayout';
 import { useAuth } from './context/AuthContext';
 import AccessGate from './components/AccessGate';
 import { RefreshCw } from 'lucide-react';
@@ -25,6 +27,9 @@ function App() {
 
   // 2. Si la carga terminó Y el código "013" NO es válido
   if (!accessCodeValid) {
+    // ✅ CORRECCIÓN: <AccessGate /> se exporta por defecto, así que no necesita llaves.
+    // (Esta parte ya estaba bien, pero la importación en AccessGate.tsx de SponsorLogo
+    // y la importación aquí de RootLayout eran los problemas).
     return <AccessGate />;
   }
 
