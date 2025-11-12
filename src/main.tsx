@@ -1,5 +1,5 @@
 // Ruta del archivo: src/main.tsx
-// ** ATENCIÓN: Este archivo es NUEVO y corrige el error "useAuth debe ser usado..."
+// ** ATENCIÓN: Este archivo corrige el error "useAuth debe ser usado..."
 // ** envolviendo la App en los providers correctos.
 
 import React from 'react';
