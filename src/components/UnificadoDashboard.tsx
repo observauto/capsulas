@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useGamification } from '@/context/GamificationContext';
+// ✅ CORRECCIÓN: Obtenemos 'loading' de AuthContext
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { AVAILABLE_BADGES } from '@/lib/gamification';
@@ -17,13 +18,12 @@ import EditProfileModal from './EditProfileModal';
 import { readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
 // --- DEFINICIONES Y DATOS ---
+// ... (Sin cambios en interfaces, PRIZES, USER_PROFILE_KEY, loadUserProfile) ...
 interface UserProfile { id: string; user_id: string; email: string; name: string; role: string; level: number; created_at: string; avatar?: string; phone?: string; location?: string; bio?: string; }
 interface RedeemedPrize { id: string; prize_id: string; prize_name: string; prize_points: number; validation_code: string; redeemed_at: string; status: string; }
 interface CapsuleProgress { id: string; capsule_name: string; section_name: string; progress_percentage: number; completed_at?: string; last_accessed: string; time_spent_minutes: number; }
-
 const PRIZES = [ { id: "1", name: "Chaqueta Observauto Premium", description: "Chaqueta exclusiva de la marca patrocinadora con tecnología térmica", points: 1000, image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400", stock: 5, category: "premium", }, { id: "2", name: "Power Bank Observauto 20,000mAh", description: "Carga rápida, diseño compacto, perfecto para viajes", points: 500, image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400", stock: 15, category: "tech", }, { id: "3", name: "Kit de Herramientas Automotriz", description: "Set profesional de 50 piezas para mantenimiento vehicular", points: 800, image: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=400", stock: 8, category: "tools", }, { id: "4", name: "Audífonos Bluetooth Premium", description: "Cancelación de ruido activa, 30 horas de batería", points: 600, image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400", stock: 12, category: "tech", }, { id: "5", name: "Mochila Observauto Tech", description: "Mochila antirrobo con puerto USB y compartimento para laptop", points: 400, image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400", stock: 20, category: "accessories", }, { id: "6", name: "Smartwatch Deportivo", description: "Monitor de ritmo cardíaco, GPS integrado, resistente al agua", points: 1200, image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400", stock: 3, category: "premium", }, { id: "7", name: "Termo Inteligente 500ml", description: "Mantiene temperatura 12h, pantalla LED, recargable USB", points: 300, image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400", stock: 25, category: "accessories", }, { id: "8", name: "Llavero Observauto Premium", description: "Llavero metálico de lujo con acabado cromado", points: 100, image: "https://images.unsplash.com/photo-1582719471137-c3967ffb1c42?w=400", stock: 50, category: "accessories", }, ];
 const USER_PROFILE_KEY = 'userProfile';
-
 const loadUserProfile = (user: { id: string, email: string, name: string } | null): UserProfile => {
     const baseProfile: UserProfile = { id: '1', user_id: user?.id || 'guest', email: user?.email || '', name: user?.name || 'Invitado', role: 'end_user', level: 1, created_at: new Date().toISOString() };
     try {
@@ -34,8 +34,10 @@ const loadUserProfile = (user: { id: string, email: string, name: string } | nul
     } catch { return baseProfile; }
 }
 
+
 export default function UnificadoDashboard() {
-    const { user, signInWithGoogle } = useAuth();
+    // ✅ CORRECCIÓN: Obtenemos 'loading' de useAuth
+    const { user, signInWithGoogle, loading: isAuthLoading } = useAuth();
     const { points, level, badges, subtractPoints, isLoading: isGamificationLoading } = useGamification();
     const activeUserId = user?.id ?? null;
 
@@ -49,7 +51,8 @@ export default function UnificadoDashboard() {
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
     const loadDashboardData = useCallback(async () => {
-        if (!activeUserId || isGamificationLoading) {
+        // ✅ CORRECCIÓN: Esperamos a que 'isAuthLoading' y 'isGamificationLoading' sean 'false'
+        if (!activeUserId || isGamificationLoading || isAuthLoading) {
             setIsLoadingData(false);
             return;
         }
@@ -84,7 +87,8 @@ export default function UnificadoDashboard() {
         } finally {
             setIsLoadingData(false);
         }
-    }, [activeUserId, isGamificationLoading]);
+    // ✅ CORRECCIÓN: Añadimos 'isAuthLoading' a las dependencias
+    }, [activeUserId, isGamificationLoading, isAuthLoading]);
 
     useEffect(() => {
         setUserProfile(loadUserProfile(user));
@@ -95,8 +99,9 @@ export default function UnificadoDashboard() {
         };
         window.addEventListener('gamification:update', handleGamificationUpdate);
         return () => window.removeEventListener('gamification:update', handleGamificationUpdate);
-    }, [user, loadDashboardData]);
+    }, [user, loadDashboardData]); // 'loadDashboardData' cambiará cuando sus dependencias lo hagan
 
+    // ... (Sin cambios en earnedBadges, handleProfileUpdate, getNextLevelPoints, getCurrentLevelProgress, handleRedeemClick, confirmRedeem, getNextMilestone, nextMilestone, progressToNext) ...
     const earnedBadges = useMemo(() => badges.map(code => AVAILABLE_BADGES[code]).filter(Boolean), [badges]);
     const handleProfileUpdate = (updatedProfile: UserProfile) => {
         setUserProfile(updatedProfile);
@@ -110,7 +115,6 @@ export default function UnificadoDashboard() {
         const progress = ((points - currentLevelPoints) / (nextLevelPointsThreshold - currentLevelPoints)) * 100;
         return Math.min(100, Math.max(0, progress));
     };
-    
     const handleRedeemClick = (prize: (typeof PRIZES)[0]) => {
         if (points < prize.points) {
             toast({ title: "Puntos insuficientes", description: `Necesitas ${prize.points - points} puntos más.`, variant: "destructive" });
@@ -120,7 +124,6 @@ export default function UnificadoDashboard() {
         setValidationCode(Math.random().toString(36).substring(2, 10).toUpperCase());
         setShowRedeemModal(true);
     };
-
     const confirmRedeem = async () => {
         if (!selectedPrize || !activeUserId) return;
         const newRedeemedPrize = { user_id: activeUserId, prize_id: selectedPrize.id, prize_name: selectedPrize.name, points_cost: selectedPrize.points, validation_code: validationCode, status: 'pending' };
@@ -136,7 +139,6 @@ export default function UnificadoDashboard() {
         toast({ title: "¡Premio Canjeado!", description: `Tu código de validación: ${validationCode}.`, duration: 10000 });
         setSelectedPrize(null);
     };
-    
     const getNextMilestone = () => {
         if (points < 100) return { points: 100, name: "Principiante" };
         if (points < 500) return { points: 500, name: "Intermedio" };
@@ -146,7 +148,8 @@ export default function UnificadoDashboard() {
     const nextMilestone = getNextMilestone();
     const progressToNext = (points / nextMilestone.points) * 100;
 
-    if (!user) {
+    // ✅ CORRECCIÓN: Esperamos a que 'isAuthLoading' sea 'false' ANTES de decidir si mostrar el panel de login
+    if (!user && !isAuthLoading) {
         return (
             <div className="container mx-auto p-6 space-y-6">
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"><CardContent className="p-8 text-center space-y-4"><UserX className="h-12 w-12 text-blue-600 mx-auto" /><h2 className="text-xl font-semibold text-gray-900">Accede a tu Panel Personal</h2><p className="text-gray-600 max-w-md mx-auto">Inicia sesión con tu cuenta de Google para ver tu progreso, puntos, insignias y canjear premios exclusivos.</p><Button onClick={signInWithGoogle} className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white"><LogIn className="h-4 w-4 mr-2" />Iniciar Sesión con Google</Button></CardContent></Card>
@@ -154,7 +157,8 @@ export default function UnificadoDashboard() {
         );
     }
 
-    if (isGamificationLoading || isLoadingData) {
+    // ✅ CORRECCIÓN: Añadimos 'isAuthLoading' al spinner de carga principal
+    if (isAuthLoading || isGamificationLoading || isLoadingData) {
         return (
             <div className="flex items-center justify-center p-8"><div className="text-center"><RefreshCw className="h-8 w-8 mx-auto animate-spin text-primary" /><p className="mt-2 text-gray-600">Sincronizando tu progreso...</p></div></div>
         );
@@ -162,6 +166,7 @@ export default function UnificadoDashboard() {
 
     return (
         <div className="container mx-auto p-6 space-y-6">
+            {/* ... (Todo el JSX de Tabs, Cards, Modals, etc. permanece idéntico) ... */}
             <div className="flex items-center justify-between"><h1 className="text-3xl font-bold text-gray-900">Mi Panel</h1><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Usuario Registrado</Badge></div>
             <Tabs defaultValue="resumen" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-6"><TabsTrigger value="resumen">Resumen</TabsTrigger><TabsTrigger value="premios">Premios</TabsTrigger><TabsTrigger value="insignias">Insignias</TabsTrigger><TabsTrigger value="reclamados">Reclamados</TabsTrigger><TabsTrigger value="capsulas">Cápsulas</TabsTrigger><TabsTrigger value="perfil">Perfil</TabsTrigger></TabsList>
