@@ -38,65 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []); // <-- Array de dependencias vacío es crucial.
 
-  // 2. Efecto de Reacción a la Autenticación
-  // Se ejecuta CADA VEZ que 'accessCodeValid' cambia.
-  useEffect(() => {
-    setLoading(true);
-    
-    // Si el código "013" NO es válido, detenemos la carga.
-    if (!accessCodeValid) {
-      console.log("[AUTH] Access Gate '013' no validado. Deteniendo carga.");
-      setUser(null);
-      setActiveUserId(null);
-      setLoading(false); // Terminamos la carga
-      return; // No suscribir a Supabase
-    }
-
-    // Si el código "013" SÍ es válido, procedemos a verificar la sesión de Supabase
-    console.log("[AUTH] Access Gate '013' validado. Verificando sesión de Supabase...");
-    
-    const authTimeout = setTimeout(() => {
-      console.warn("[AUTH] Timeout: Autenticación inicial tardó mucho. Forzando fin de carga.");
-      if (loading) setLoading(false); // 'loading' aquí es el valor 'stale' del closure
-    }, 10000); 
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AUTH] Evento de auth:', event, { hasSession: !!session });
-        clearTimeout(authTimeout); 
-
-        const supabaseUser = session?.user;
-        if (supabaseUser) {
-          const appUser: User = {
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuario',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-            created_at: supabaseUser.created_at || new Date().toISOString()
-          };
-          setUser(appUser);
-          setActiveUserId(appUser.id);
-          
-          if (event === 'SIGNED_IN') {
-            handleDataSync(appUser.id, appUser.email);
-          }
-        } else {
-          setUser(null);
-          setActiveUserId(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(authTimeout);
-    };
-  }, [accessCodeValid]); // ✅ CORRECCIÓN: Dependencia ÚNICA.
-
-  const handleDataSync = async (userId: string, userEmail: string) => {
-    // ... (Sin cambios) ...
+  // Función de Sincronización (envuelta en useCallback para estabilidad)
+  const handleDataSync = useCallback(async (userId: string, userEmail: string) => {
     if (isSyncing) return;
     setIsSyncing(true);
     console.log('[AUTH] Iniciando sincronización de datos...');
@@ -119,7 +62,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.dispatchEvent(new CustomEvent('gamification:syncComplete'));
       console.log('[AUTH] Sincronización finalizada.');
     }
-  };
+  }, [isSyncing]); // Depende solo de 'isSyncing'
+
+  // 2. Efecto de Reacción a la Autenticación
+  // Se ejecuta CADA VEZ que 'accessCodeValid' cambia.
+  useEffect(() => {
+    setLoading(true);
+    
+    // Si el código "013" NO es válido, detenemos la carga.
+    if (!accessCodeValid) {
+      console.log("[AUTH] Access Gate '013' no validado. Deteniendo carga.");
+      setUser(null);
+      setActiveUserId(null);
+      setLoading(false); // Terminamos la carga
+      return; // No suscribir a Supabase
+    }
+
+    // Si el código "013" SÍ es válido, procedemos a verificar la sesión de Supabase
+    console.log("[AUTH] Access Gate '013' validado. Obteniendo sesión actual...");
+
+    // 1. OBTENER LA SESIÓN ACTUAL (getSession)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AUTH] getSession() completado.', { hasSession: !!session });
+      const supabaseUser = session?.user;
+      if (supabaseUser) {
+        const appUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuario',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+          created_at: supabaseUser.created_at || new Date().toISOString()
+        };
+        setUser(appUser);
+        setActiveUserId(appUser.id);
+      } else {
+        setUser(null);
+        setActiveUserId(null);
+      }
+      setLoading(false); // Terminamos la carga INICIAL
+    }).catch((err) => {
+      console.error("[AUTH] Error en getSession()", err);
+      setUser(null);
+      setActiveUserId(null);
+      setLoading(false);
+    });
+
+    // 2. SUSCRIBIRSE A CAMBIOS FUTUROS (onAuthStateChange)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('[AUTH] Evento de auth (listener):', event, { hasSession: !!session });
+
+        // Ignoramos el evento inicial, ya lo manejamos con getSession()
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
+        const supabaseUser = session?.user;
+        if (supabaseUser) {
+          const appUser: User = {
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuario',
+            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
+            created_at: supabaseUser.created_at || new Date().toISOString()
+          };
+          setUser(appUser);
+          setActiveUserId(appUser.id);
+          
+          if (event === 'SIGNED_IN') {
+            handleDataSync(appUser.id, appUser.email);
+          }
+        } else {
+          setUser(null);
+          setActiveUserId(null);
+        }
+      }
+    );
+
+    return () => {
+      console.log("[AUTH] Limpiando suscripción de Supabase.");
+      subscription.unsubscribe();
+    };
+  }, [accessCodeValid, handleDataSync]); // ✅ CORRECCIÓN: Dependencia estable.
 
   const signInWithGoogle = async () => {
     // ... (Sin cambios) ...
