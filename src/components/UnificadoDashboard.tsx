@@ -49,10 +49,12 @@ export default function UnificadoDashboard() {
     const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
     const loadDashboardData = useCallback(async () => {
-        if (!activeUserId) {
+        if (!activeUserId || isGamificationLoading) {
             setIsLoadingData(false);
             return;
         }
+
+        console.log("[DASHBOARD] Usuario estable, cargando datos de cápsulas y premios...");
         setIsLoadingData(true);
         try {
             const [prizesRes, capsulesRes] = await Promise.all([
@@ -74,6 +76,7 @@ export default function UnificadoDashboard() {
                 time_spent_minutes: 20
             }));
             setUserCapsules(formattedCapsules);
+            console.log(`[DASHBOARD] Datos cargados: ${prizesRes.data?.length || 0} premios, ${capsulesRes.data?.length || 0} cápsulas.`);
             
         } catch (error: any) {
             console.error("Error al cargar datos del dashboard:", error);
@@ -81,12 +84,15 @@ export default function UnificadoDashboard() {
         } finally {
             setIsLoadingData(false);
         }
-    }, [activeUserId]);
+    }, [activeUserId, isGamificationLoading]);
 
     useEffect(() => {
         setUserProfile(loadUserProfile(user));
         loadDashboardData();
-        const handleGamificationUpdate = () => loadDashboardData();
+        const handleGamificationUpdate = () => {
+            console.log("[DASHBOARD] Recibido evento 'gamification:update', recargando datos...");
+            loadDashboardData();
+        };
         window.addEventListener('gamification:update', handleGamificationUpdate);
         return () => window.removeEventListener('gamification:update', handleGamificationUpdate);
     }, [user, loadDashboardData]);
@@ -125,7 +131,7 @@ export default function UnificadoDashboard() {
             return;
         }
         subtractPoints(selectedPrize.points);
-        setRedeemedPrizes(prev => [data as RedeemedPrize, ...prev]);
+        loadDashboardData();
         setShowRedeemModal(false);
         toast({ title: "¡Premio Canjeado!", description: `Tu código de validación: ${validationCode}.`, duration: 10000 });
         setSelectedPrize(null);
