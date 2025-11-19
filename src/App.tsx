@@ -9,7 +9,7 @@ import NotFound from "./pages/NotFound";
 import FullCapsule from "./pages/FullCapsule";
 import CapsuleQuiz from "./pages/CapsuleQuiz";
 import { UnificadoDashboard } from "./components/UnificadoDashboard";
-import { RootLayout } from "./layouts/RootLayout"; 
+import { RootLayout } from "./layouts/RootLayout";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +21,6 @@ const App = () => (
       <BrowserRouter>
         <AccessGate>
           <Routes>
-            {/* ✅ RECUPERADO: RootLayout envuelve las páginas para mostrar el Navbar */}
             <Route element={<RootLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/capsula/:id" element={<FullCapsule />} />
