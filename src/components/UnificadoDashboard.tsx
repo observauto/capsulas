@@ -7,46 +7,16 @@ import { Trophy, Star, BookOpen, Gift, User, History, LogOut, ShieldCheck, Layou
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
+
+// CORRECCIÓN IMPORTACIONES: Usamos los nombres exactos exportados en los archivos originales
+import { FULL_CAPSULES } from '@/data/fullCapsules';
+import { CapsuleCard } from '@/components/CapsuleCard';
+import { GamificationStatus } from '@/components/GamificationStatus';
+
 import { toast } from "sonner";
 import { supabase } from '@/lib/supabase';
 
-// =============================================================================
-// 🛡️ ESTRATEGIA DE IMPORTACIÓN BLINDADA (BULLETPROOF IMPORTS)
-// Importamos todo el módulo para detectar dinámicamente si es 'default' o 'named'
-// =============================================================================
-
-// 1. Data
-import * as CapsulesModule from '@/data/fullCapsules';
-
-// 2. Componentes
-import * as CapsuleCardModule from '@/components/CapsuleCard';
-import * as GamificationStatusModule from '@/components/GamificationStatus';
-
-// 🛠️ Resolución Dinámica de Componentes
-// Intenta encontrar el componente en .default o en la exportación nombrada
-const CapsuleCard = (CapsuleCardModule as any).CapsuleCard || (CapsuleCardModule as any).default;
-const GamificationStatus = (GamificationStatusModule as any).GamificationStatus || (GamificationStatusModule as any).default;
-
-// 🛠️ Resolución Dinámica de Datos
-const getCapsulesData = (): Capsule[] => {
-  const module = CapsulesModule as any;
-  // Busca arrays en las exportaciones comunes
-  const data = module.default || module.capsules || module.fullCapsules || module.data || Object.values(module).find(val => Array.isArray(val));
-  return Array.isArray(data) ? data : [];
-};
-
-const fullCapsules = getCapsulesData();
-
-// 🔍 DEBUG LOGGER (Para ver en consola qué está fallando si persiste)
-console.log("[DASHBOARD DEBUG]", {
-  CapsuleCardExists: !!CapsuleCard,
-  GamificationStatusExists: !!GamificationStatus,
-  CapsulesCount: fullCapsules.length
-});
-
-// =============================================================================
-
-// Sub-componentes internos
+// Sub-componentes para mantener el archivo limpio
 const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any[] }) => (
   <div className="space-y-6 animate-in fade-in duration-500">
     {/* Stats Grid */}
@@ -59,7 +29,7 @@ const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any
         <CardContent>
           <div className="text-2xl font-bold text-blue-700">{stats.level}</div>
           <p className="text-xs text-blue-600 mt-1">{stats.nextLevelProgress}% para el siguiente nivel</p>
-          <Progress value={stats.nextLevelProgress || 0} className="h-2 mt-2 bg-blue-200" indicatorClassName="bg-blue-600" />
+          <Progress value={stats.nextLevelProgress} className="h-2 mt-2 bg-blue-200" indicatorClassName="bg-blue-600" />
         </CardContent>
       </Card>
       <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 shadow-sm">
@@ -93,7 +63,7 @@ const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {recentActivity && recentActivity.length > 0 ? (
+        {recentActivity.length > 0 ? (
           <div className="space-y-4">
             {recentActivity.map((activity, i) => (
               <div key={i} className="flex items-center justify-between border-b border-slate-100 last:border-0 pb-3 last:pb-0">
@@ -127,32 +97,29 @@ const CapsulasTab = ({ completedCapsules }: { completedCapsules: string[] }) => 
   <div className="space-y-6 animate-in fade-in duration-500">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-slate-900">Tu Biblioteca de Aprendizaje</h3>
-      <span className="text-sm text-slate-500">{completedCapsules?.length || 0} de {(fullCapsules || []).length} completadas</span>
+      <span className="text-sm text-slate-500">{completedCapsules.length} de {(FULL_CAPSULES || []).length} completadas</span>
     </div>
     
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Renderizado Seguro de Cápsulas */}
-      {fullCapsules && fullCapsules.length > 0 ? (
-        fullCapsules.map((capsule: Capsule) => {
-          if (!CapsuleCard) return null; // Protección contra fallo de componente
-          return (
-            <CapsuleCard 
-              key={capsule.id} 
-              capsule={capsule}
-              onClick={() => window.location.href = `/capsula/${capsule.id}`}
-            />
-          );
-        })
-      ) : (
-        <p className="text-slate-500">Cargando cápsulas...</p>
-      )}
+      {(FULL_CAPSULES || []).map((capsule) => (
+        <CapsuleCard 
+          key={capsule.id} 
+          title={capsule.title}
+          description={capsule.summary}
+          icon={BookOpen}
+          isFavorite={false} // TODO: Conectar favoritos reales si es necesario aquí
+          onToggleFavorite={() => {}}
+          onExplore={() => window.location.href = `/capsulas/${capsule.slug}`}
+          isCompleted={completedCapsules.includes(capsule.id)}
+        />
+      ))}
     </div>
   </div>
 );
 
 const InsigniasTab = () => (
    <div className="space-y-6 animate-in fade-in duration-500">
-       {GamificationStatus ? <GamificationStatus /> : <p>Componente de insignias no disponible.</p>}
+       <GamificationStatus />
    </div>
 );
 
@@ -162,6 +129,7 @@ const PremiosTab = ({ availablePrizes, onRedeem }: { availablePrizes: any[], onR
       {availablePrizes.map((prize) => (
         <Card key={prize.id} className="overflow-hidden hover:shadow-md transition-shadow border-slate-200">
           <div className="h-48 bg-slate-100 relative">
+             {/* Placeholder para imagen del premio */}
              <div className="absolute inset-0 flex items-center justify-center text-slate-400">
                 <Gift className="h-12 w-12" />
              </div>
@@ -199,7 +167,7 @@ const ReclamadosTab = ({ redeemedPrizes }: { redeemedPrizes: any[] }) => (
     <div className="space-y-6 animate-in fade-in duration-500">
       <h3 className="text-lg font-semibold text-slate-900 mb-4">Mis Premios Canjeados</h3>
       <div className="grid grid-cols-1 gap-4">
-        {redeemedPrizes && redeemedPrizes.length > 0 ? (
+        {redeemedPrizes.length > 0 ? (
           redeemedPrizes.map((item, index) => (
             <Card key={index} className="border-l-4 border-l-green-500 shadow-sm">
               <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -266,30 +234,35 @@ const PerfilTab = ({ user, onLogout, onEditProfile }: { user: any, onLogout: () 
   </div>
 );
 
+
 export const UnificadoDashboard = () => {
   const { points, level, completedCapsules: completedIds, experience, claimPrize } = useGamification();
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("resumen");
   const [redeemedPrizes, setRedeemedPrizes] = useState<any[]>([]);
 
+  // Calcular stats reales
   const stats = {
     points: points,
     level: level,
-    completedCapsules: completedIds?.length || 0,
-    totalCapsules: fullCapsules.length,
-    nextLevelProgress: Math.min(100, Math.floor(((experience || 0) % 1000) / 10)),
+    completedCapsules: completedIds.length,
+    totalCapsules: (FULL_CAPSULES || []).length,
+    nextLevelProgress: Math.min(100, Math.floor((experience % 1000) / 10)), 
   };
 
+  // Mock de actividad reciente (esto debería venir de BD)
   const recentActivity = [
     { type: 'capsule', title: 'Historia de los EVs', date: 'Hace 2 horas', points: 50 },
     { type: 'quiz', title: 'Quiz: Motores Eléctricos', date: 'Hace 1 día', points: 100 },
   ];
 
+  // Mock de premios disponibles (esto debería venir de BD)
   const availablePrizes = [
     { id: 1, name: "Kit de Limpieza BYD", description: "Mantén tu vehículo impecable", cost: 500, image: null },
     { id: 2, name: "Gorra Oficial Observauto", description: "Estilo y protección solar", cost: 300, image: null },
   ];
 
+  // Fetch de premios reclamados
   useEffect(() => {
     const fetchRedeemed = async () => {
         if (!user) return;
@@ -305,7 +278,7 @@ export const UnificadoDashboard = () => {
             
             if (data) {
                 setRedeemedPrizes(data.map(d => ({
-                    prizeName: d.prize_id, 
+                    prizeName: d.prize_id, // Por ahora usaremos el ID como nombre hasta tener tabla de premios
                     date: d.redeemed_at,
                     code: d.redemption_code
                 })));
@@ -316,7 +289,7 @@ export const UnificadoDashboard = () => {
     };
 
     fetchRedeemed();
-  }, [user, activeTab]);
+  }, [user, activeTab]); // Recargar al cambiar de tab
 
   const handleRedeem = async (prize: any) => {
       const success = await claimPrize(prize.id, prize.cost);
@@ -324,6 +297,7 @@ export const UnificadoDashboard = () => {
           toast.success(`¡Has canjeado: ${prize.name}!`, {
               description: "Revisa la pestaña 'Reclamados' para ver tu código.",
           });
+          // Forzar recarga de redimidos
           setActiveTab("reclamados"); 
       } else {
           toast.error("No tienes suficientes puntos para este premio.");
@@ -349,28 +323,30 @@ export const UnificadoDashboard = () => {
       </div>
 
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        {/* CORRECCIÓN UX: w-full overflow-x-auto para móviles */}
-        <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0">
-            <TabsList className="w-full justify-start md:justify-center h-auto p-1 bg-slate-100/80 backdrop-blur-sm inline-flex min-w-full md:min-w-0">
-            {[
-                { id: 'resumen', icon: LayoutDashboard, label: 'Resumen' },
-                { id: 'capsulas', icon: BookOpen, label: 'Cápsulas' },
-                { id: 'insignias', icon: Trophy, label: 'Insignias' },
-                { id: 'premios', icon: Gift, label: 'Premios' },
-                { id: 'reclamados', icon: ShieldCheck, label: 'Reclamados' },
-                { id: 'perfil', icon: User, label: 'Perfil' },
-            ].map((tab) => (
-                <TabsTrigger 
-                    key={tab.id} 
-                    value={tab.id}
-                    className="flex items-center gap-2 px-4 py-2.5 whitespace-nowrap min-w-fit flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-observauto-dark data-[state=active]:shadow-sm transition-all duration-200"
-                >
-                    <tab.icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
-                </TabsTrigger>
-            ))}
-            </TabsList>
-        </div>
+        {/* CORRECCIÓN UX SOLICITADA:
+           - En móvil: grid-cols-3 (2 filas de 3 botones), eliminando el slider.
+           - En escritorio (md): flex, diseño original.
+           - Altura automática (h-auto) para que quepan las dos filas.
+        */}
+        <TabsList className="w-full h-auto grid grid-cols-3 gap-1 p-1 bg-slate-100/80 backdrop-blur-sm md:inline-flex md:w-auto md:gap-0">
+          {[
+            { id: 'resumen', icon: LayoutDashboard, label: 'Resumen' },
+            { id: 'capsulas', icon: BookOpen, label: 'Cápsulas' },
+            { id: 'insignias', icon: Trophy, label: 'Insignias' },
+            { id: 'premios', icon: Gift, label: 'Premios' },
+            { id: 'reclamados', icon: ShieldCheck, label: 'Reclamados' },
+            { id: 'perfil', icon: User, label: 'Perfil' },
+          ].map((tab) => (
+            <TabsTrigger 
+                key={tab.id} 
+                value={tab.id}
+                className="flex flex-col items-center gap-1 px-2 py-2 text-xs md:flex-row md:gap-2 md:px-4 md:py-2.5 md:text-sm whitespace-nowrap data-[state=active]:bg-white data-[state=active]:text-observauto-dark data-[state=active]:shadow-sm transition-all duration-200"
+            >
+                <tab.icon className="h-4 w-4 md:h-4 md:w-4" />
+                <span>{tab.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         <TabsContent value="resumen" className="focus-visible:outline-none">
             <ResumenTab stats={stats} recentActivity={recentActivity} />
@@ -397,9 +373,10 @@ export const UnificadoDashboard = () => {
                 user={user} 
                 onLogout={signOut} 
                 onEditProfile={() => {
+                    // Aquí abriremos el modal (que arreglaremos en el siguiente paso)
                     const btn = document.getElementById('open-edit-profile');
                     if (btn) btn.click();
-                    else console.log("Modal trigger not found");
+                    else console.log("Modal trigger not found, will be fixed in next step");
                 }} 
             />
         </TabsContent>
