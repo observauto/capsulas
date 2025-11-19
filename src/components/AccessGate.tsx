@@ -47,7 +47,7 @@ export default function AccessGate({ children }: AccessGateProps) {
     }
   };
 
-  // FONDO UNIFICADO: Siempre usa el gradiente, incluso cargando
+  // ✅ CORRECCIÓN VISUAL: Si está cargando, usa el MISMO fondo degradado (no negro)
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -56,10 +56,12 @@ export default function AccessGate({ children }: AccessGateProps) {
     );
   }
 
+  // Si ya tiene acceso, mostrar la app directamente
   if (isAccessGranted) {
     return <>{children}</>;
   }
 
+  // Pantalla de Acceso "013" (Diseño Original Intacto)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
