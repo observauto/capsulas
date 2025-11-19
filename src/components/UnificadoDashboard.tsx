@@ -43,7 +43,9 @@ export const UnificadoDashboard = () => {
 
       <Tabs defaultValue="overview" className="w-full space-y-6" onValueChange={setActiveTab}>
         
-        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL) */}
+        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL) 
+            Aquí se define 'grid-cols-3' para que en móvil se vean 3 arriba y 3 abajo.
+        */}
         <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50 rounded-xl md:flex md:w-auto md:bg-muted md:gap-1">
           
           <TabsTrigger 
