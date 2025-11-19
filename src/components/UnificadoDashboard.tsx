@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// CORRECCIÓN: Importaciones por defecto (sin llaves) para los paneles existentes
+
+// CORRECCIÓN: Todos estos componentes son exportaciones por defecto (sin llaves)
 import Panel1EndUserDashboard from "@/components/backoffice/Panel1EndUserDashboard";
 import RedeemedRewards from "@/components/backoffice/RedeemedRewards";
 import CompletedCapsules from "@/components/backoffice/CompletedCapsules";
+import EditProfileModal from "@/components/EditProfileModal"; 
 
-import { EditProfileModal } from "@/components/EditProfileModal";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
