@@ -43,9 +43,7 @@ export const UnificadoDashboard = () => {
 
       <Tabs defaultValue="overview" className="w-full space-y-6" onValueChange={setActiveTab}>
         
-        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL)
-           Se usa un grid de 3 columnas en móvil para lograr el layout de 2 filas (3 items arriba, 3 abajo).
-        */}
+        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL) */}
         <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50 rounded-xl md:flex md:w-auto md:bg-muted md:gap-1">
           
           <TabsTrigger 
@@ -105,7 +103,6 @@ export const UnificadoDashboard = () => {
         </TabsContent>
 
         <TabsContent value="rewards" className="space-y-4 animate-fade-in">
-           {/* Placeholder temporal hasta conectar la lógica completa de premios */}
            <Card>
             <CardHeader>
               <CardTitle>Catálogo de Premios</CardTitle>

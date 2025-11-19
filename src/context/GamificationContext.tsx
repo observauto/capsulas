@@ -1,15 +1,15 @@
 // Ruta del archivo: src/context/GamificationContext.tsx
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useAuth } from "./AuthContext"; // Sin cambios
+import { useAuth } from "./AuthContext";
 import {
   GamificationSnapshot,
   loadGamificationDataFromSupabase,
   persistGamificationProgress,
   readLocalGamificationData,
   writeLocalGamificationData,
-  mergeSnapshots,
-} from "@/lib/gamification-sync"; // Sin cambios
+  mergeSnapshots, // ✅ CORRECCIÓN: Importar la función compartida
+} from "@/lib/gamification-sync";
 
 type GamificationContextValue = {
   points: number;
@@ -26,8 +26,7 @@ type GamificationContextValue = {
 const GamificationContext = createContext<GamificationContextValue | null>(null);
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
-  // ✅ CORRECCIÓN: Obtenemos el estado 'loading' de AuthContext
-  const { user, isSyncing, loading: isAuthLoading } = useAuth();
+  const { user, isSyncing } = useAuth();
   const [points, setPointsState] = useState(0);
   const [badges, setBadgesState] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,18 +46,9 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       isBootstrapping.current = true;
       setIsLoading(true);
 
-      // ✅ CORRECCIÓN: Esperamos si AuthContext sigue cargando.
-      if (isAuthLoading) {
-        console.log('[GAMIFICATION] Esperando fin de autenticación de AuthContext...');
-        isBootstrapping.current = false;
-        // No establecemos isLoading(false) aquí, esperamos a que el efecto se re-ejecute
-        return;
-      }
-
       if (isSyncing) {
         console.log('[GAMIFICATION] Esperando fin de sincronización de AuthContext...');
         isBootstrapping.current = false;
-        // No establecemos isLoading(false) aquí, esperamos a que el efecto se re-ejecute
         return;
       }
 
@@ -103,8 +93,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       isBootstrapping.current = false;
       window.removeEventListener('gamification:syncComplete', syncCompleteListener);
     };
-    // ✅ CORRECCIÓN: Añadimos 'isAuthLoading' a las dependencias del efecto
-  }, [user, isSyncing, isAuthLoading, applySnapshot]);
+  }, [user, isSyncing, applySnapshot]);
 
   const updateAndPersist = useCallback((newPoints: number, newBadges: string[]) => {
     const snapshot = mergeSnapshots(newPoints, newBadges);
@@ -116,11 +105,12 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       writeLocalGamificationData(snapshot, null);
     }
     window.dispatchEvent(new CustomEvent('gamification:update'));
-  }, [user, applySnapshot]); // Sin cambios
+  }, [user, applySnapshot]);
 
   const addPoints = useCallback((delta: number) => {
     setPointsState(prevPoints => {
       const newPoints = Math.max(0, Math.floor(prevPoints + delta));
+      // Obtenemos el estado más reciente de los badges para la actualización
       setBadgesState(prevBadges => {
         const newBadges = mergeSnapshots(newPoints, prevBadges).badges;
         updateAndPersist(newPoints, newBadges);
@@ -128,11 +118,11 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       });
       return newPoints;
     });
-  }, [updateAndPersist]); // Sin cambios
+  }, [updateAndPersist]);
   
   const subtractPoints = useCallback((delta: number) => {
     addPoints(-Math.abs(delta));
-  }, [addPoints]); // Sin cambios
+  }, [addPoints]);
 
   const grantBadge = useCallback((code: string) => {
     setBadgesState(prevBadges => {
@@ -141,7 +131,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       updateAndPersist(points, newBadges);
       return newBadges;
     });
-  }, [points, updateAndPersist]); // Sin cambios
+  }, [points, updateAndPersist]);
 
   const grantBadges = useCallback((codes: string[]) => {
     setBadgesState(prevBadges => {
@@ -151,18 +141,18 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
       updateAndPersist(points, newBadges);
       return newBadges;
     });
-  }, [points, updateAndPersist]); // Sin cambios
+  }, [points, updateAndPersist]);
 
   const reset = useCallback(async () => {
     updateAndPersist(0, []);
-  }, [updateAndPersist]); // Sin cambios
+  }, [updateAndPersist]);
 
-  const level = useMemo(() => Math.floor(points / 100) + 1, [points]); // Sin cambios
+  const level = useMemo(() => Math.floor(points / 100) + 1, [points]);
 
   const value = useMemo<GamificationContextValue>(
     () => ({ points, level, badges, addPoints, subtractPoints, grantBadge, grantBadges, reset, isLoading }),
     [points, level, badges, addPoints, subtractPoints, grantBadge, grantBadges, reset, isLoading],
-  ); // Sin cambios
+  );
 
   return <GamificationContext.Provider value={value}>{children}</GamificationContext.Provider>;
 }
@@ -173,4 +163,4 @@ export function useGamification() {
     throw new Error("useGamification must be used within GamificationProvider");
   }
   return ctx;
-} // Sin cambios
+}

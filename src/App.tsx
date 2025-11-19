@@ -1,39 +1,40 @@
-// Ruta del archivo: src/App.tsx
-// ** ATENCIÓN: Este archivo ahora implementa la lógica del Access Gate "013" **
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AccessGate from "./components/AccessGate";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import FullCapsule from "./pages/FullCapsule";
+import CapsuleQuiz from "./pages/CapsuleQuiz";
+import { UnificadoDashboard } from "./components/UnificadoDashboard";
 
-import { BrowserRouter as Router } from 'react-router-dom';
-import RootLayout from './layouts/RootLayout';
-import { useAuth } from './context/AuthContext';
-import AccessGate from './components/AccessGate';
-import { RefreshCw } from 'lucide-react';
+const queryClient = new QueryClient();
 
-function App() {
-  // Obtenemos los estados del AuthContext
-  const { loading, accessCodeValid } = useAuth();
-
-  // 1. Si el contexto está en su carga inicial (comprobando auth Y código "013")
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center">
-          <RefreshCw className="h-10 w-10 mx-auto animate-spin text-primary" />
-          <p className="mt-4 text-lg text-gray-700">Verificando acceso...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Si la carga terminó Y el código "013" NO es válido
-  if (!accessCodeValid) {
-    return <AccessGate />;
-  }
-
-  // 3. Si la carga terminó Y el código "013" SÍ es válido
-  return (
-    <Router>
-      <RootLayout />
-    </Router>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AccessGate>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/capsula/:id" element={<FullCapsule />} />
+            <Route path="/capsula/:id/quiz" element={<CapsuleQuiz />} />
+            
+            {/* Ruta Unificada para Dashboard */}
+            <Route path="/backoffice" element={<UnificadoDashboard />} />
+            <Route path="/gamificacion" element={<UnificadoDashboard />} />
+            
+            {/* Ruta 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AccessGate>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
