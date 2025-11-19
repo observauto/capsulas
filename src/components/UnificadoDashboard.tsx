@@ -11,8 +11,10 @@ import { toast } from "sonner";
 import { supabase } from '@/lib/supabase';
 
 // =============================================================================
-// 🛡️ IMPORTACIONES SEGURAS (Para evitar que la app se rompa)
+// 🛡️ IMPORTACIONES SEGURAS Y BLINDADAS
 // =============================================================================
+
+// 1. Data Cápsulas
 import * as CapsulesModule from '@/data/fullCapsules';
 const getCapsulesData = (): Capsule[] => {
   const module = CapsulesModule as any;
@@ -21,14 +23,18 @@ const getCapsulesData = (): Capsule[] => {
 };
 const safeFullCapsules = getCapsulesData();
 
+// 2. Componentes UI (CapsuleCard, GamificationStatus, EditProfileModal)
 import * as CapsuleCardModule from '@/components/CapsuleCard';
 import * as GamificationStatusModule from '@/components/GamificationStatus';
+import * as EditProfileModalModule from '@/components/EditProfileModal';
 
 const CapsuleCard = (CapsuleCardModule as any).CapsuleCard || (CapsuleCardModule as any).default;
 const GamificationStatus = (GamificationStatusModule as any).GamificationStatus || (GamificationStatusModule as any).default;
+// Recuperamos el modal de edición de forma segura
+const EditProfileModal = (EditProfileModalModule as any).EditProfileModal || (EditProfileModalModule as any).default;
 
 // =============================================================================
-// 🎁 CATÁLOGO DE PREMIOS (Fijo para visualización, canje real en BD)
+// 🎁 CATÁLOGO DE PREMIOS BASE
 // =============================================================================
 const CATALOGO_PREMIOS = [
   { 
@@ -62,12 +68,11 @@ const CATALOGO_PREMIOS = [
 ];
 
 // =============================================================================
-// 🧩 PESTAÑAS DEL DASHBOARD
+// 🧩 SUB-COMPONENTES
 // =============================================================================
 
 const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any[] }) => (
   <div className="space-y-6 animate-in fade-in duration-500">
-    {/* Grid de Estadísticas */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card className="bg-blue-50 border-blue-100 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -101,7 +106,6 @@ const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any
       </Card>
     </div>
 
-    {/* Actividad Reciente (SOLO DATOS REALES) */}
     <Card className="shadow-sm border-slate-200">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
@@ -232,7 +236,8 @@ const ReclamadosTab = ({ redeemedPrizes }: { redeemedPrizes: any[] }) => (
     </div>
 );
 
-const PerfilTab = ({ user, onLogout, onEditProfile }: { user: any, onLogout: () => void, onEditProfile: () => void }) => (
+// 🛠️ Corrección Perfil: Usamos el EditProfileModal real
+const PerfilTab = ({ user, onLogout }: { user: any, onLogout: () => void }) => (
   <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
     <Card className="shadow-md border-slate-200">
         <CardHeader className="text-center pb-2">
@@ -245,9 +250,34 @@ const PerfilTab = ({ user, onLogout, onEditProfile }: { user: any, onLogout: () 
             <CardDescription>{user?.email}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full" id="open-edit-profile" onClick={onEditProfile}>
-                Editar Información
-            </Button>
+            <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Miembro desde</p>
+                    <p className="font-medium text-slate-900">
+                        {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '2025'}
+                    </p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Estado</p>
+                    <p className="font-medium text-green-600 flex items-center justify-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> Activo
+                    </p>
+                </div>
+            </div>
+
+            {/* BOTÓN CORREGIDO: Envuelto en el modal si existe, o fallback seguro */}
+            {EditProfileModal ? (
+                <EditProfileModal>
+                    <Button variant="outline" className="w-full">
+                        Editar Información Personal
+                    </Button>
+                </EditProfileModal>
+            ) : (
+                <Button variant="outline" className="w-full" disabled>
+                    Editar Información (No disponible)
+                </Button>
+            )}
+
             <Button variant="destructive" className="w-full" onClick={onLogout}>
                 <LogOut className="h-4 w-4 mr-2" /> Cerrar Sesión
             </Button>
@@ -274,7 +304,7 @@ export const UnificadoDashboard = () => {
     totalCapsules: (safeFullCapsules || []).length,
   };
 
-  // CARGAR DATOS REALES (Premios y Actividad)
+  // CARGAR DATOS REALES
   useEffect(() => {
     const loadRealData = async () => {
         if (!user) return;
@@ -300,7 +330,7 @@ export const UnificadoDashboard = () => {
             });
             setRedeemedPrizes(formattedRedeemed);
 
-            // 2. Cápsulas Completadas (para el historial)
+            // 2. Historial de Cápsulas
             const { data: history, error: hError } = await supabase
                 .from('user_completed_capsules')
                 .select('*')
@@ -310,7 +340,7 @@ export const UnificadoDashboard = () => {
 
             if (hError) throw hError;
 
-            // 3. Unificar Historial Real
+            // 3. Unificar Actividad
             const activity = [];
             (history || []).forEach(h => {
                 const cap = safeFullCapsules.find(c => c.id === h.capsule_id);
@@ -339,7 +369,7 @@ export const UnificadoDashboard = () => {
             setRecentActivity(activity);
 
         } catch (e) {
-            console.error("Error cargando datos reales:", e);
+            console.error("Error cargando datos:", e);
         }
     };
 
@@ -369,10 +399,7 @@ export const UnificadoDashboard = () => {
       </div>
 
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* CORRECCIÓN UX NAVEGACIÓN (LO QUE PEDISTE):
-           - Móvil: grid-cols-3 (2 filas de 3 botones). SIN SLIDER.
-           - Desktop: flex (Línea horizontal normal).
-        */}
+        {/* NAVEGACIÓN CORREGIDA: Grid 2 filas x 3 columnas en móvil */}
         <TabsList className="w-full h-auto grid grid-cols-3 gap-1 p-1 bg-slate-100 md:inline-flex md:w-auto md:gap-0">
             {[
                 { id: 'resumen', icon: LayoutDashboard, label: 'Resumen' },
@@ -401,7 +428,7 @@ export const UnificadoDashboard = () => {
         <TabsContent value="premios"><PremiosTab availablePrizes={CATALOGO_PREMIOS} onRedeem={handleRedeem} points={points || 0} /></TabsContent>
         <TabsContent value="reclamados"><ReclamadosTab redeemedPrizes={redeemedPrizes} /></TabsContent>
         <TabsContent value="perfil">
-            <PerfilTab user={user} onLogout={signOut} onEditProfile={() => document.getElementById('open-edit-profile')?.click()} />
+            <PerfilTab user={user} onLogout={signOut} />
         </TabsContent>
       </Tabs>
     </div>
