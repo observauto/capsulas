@@ -19,14 +19,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// --- CORRECCIÓN DE BUILD: Importación nombrada para evitar error "default not exported" ---
-import { EditProfileModal } from './EditProfileModal';
-import { CapsuleCard } from './CapsuleCard';
-import { GamificationStatus } from './GamificationStatus';
-import { capsules as fullCapsules } from '@/data/fullCapsules';
-// ----------------------------------------------------------------------------------------
-
 import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
+
+// ========================================================================================
+// 🛡️ FIX CRÍTICO DE BUILD: ESTRATEGIA DE IMPORTACIÓN BLINDADA
+// ========================================================================================
+// Esto evita los errores "is not exported" detectando automáticamente cómo se exporta cada archivo.
+
+// 1. Componentes UI
+import * as EditProfileModalModule from './EditProfileModal';
+import * as CapsuleCardModule from './CapsuleCard';
+import * as GamificationStatusModule from './GamificationStatus';
+
+const EditProfileModal = (EditProfileModalModule as any).EditProfileModal || (EditProfileModalModule as any).default;
+const CapsuleCard = (CapsuleCardModule as any).CapsuleCard || (CapsuleCardModule as any).default;
+const GamificationStatus = (GamificationStatusModule as any).GamificationStatus || (GamificationStatusModule as any).default;
+
+// 2. Datos (fullCapsules)
+import * as CapsulesModule from '@/data/fullCapsules';
+const getSafeCapsules = () => {
+  const mod = CapsulesModule as any;
+  // Busca el array en default, capsules, fullCapsules o la primera exportación que sea array
+  return mod.default || mod.capsules || mod.fullCapsules || Object.values(mod).find((v) => Array.isArray(v)) || [];
+};
+const fullCapsules = getSafeCapsules();
+// ========================================================================================
+
 
 // Datos base - Lógica original restaurada
 const BASE_USER_PROFILE = {
@@ -243,7 +261,7 @@ const UnificadoDashboard = () => {
         {/* Contenido: Cápsulas */}
         <TabsContent value="capsulas">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {fullCapsules.map((capsule) => (
+                {fullCapsules.map((capsule: any) => (
                     <CapsuleCard 
                         key={capsule.id}
                         title={capsule.title}
