@@ -15,7 +15,7 @@ import { useAccessGate } from './hooks/useAccessGate';
 import UnificadoDashboard from './components/UnificadoDashboard';
 import BackofficeDashboard from './components/backoffice/BackofficeDashboard';
 
-// Wrapper para rutas protegidas
+// Wrapper para rutas protegidas (Solo para Backoffice real)
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   
@@ -47,17 +47,15 @@ const AppContent = () => {
           <Route path="/capsula/:id" element={<FullCapsule />} />
           <Route path="/capsula/:id/quiz" element={<CapsuleQuiz />} />
           
-          {/* RUTA DASHBOARD UNIFICADO (Usuario Final) */}
+          {/* CORRECCIÓN: El Dashboard ahora es PÚBLICO (accesible para invitados).
+             El propio componente UnificadoDashboard maneja internamente si muestra datos o "Modo Invitado".
+          */}
           <Route 
             path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <UnificadoDashboard />
-              </ProtectedRoute>
-            } 
+            element={<UnificadoDashboard />} 
           />
 
-          {/* RUTA BACKOFFICE (Admin) - Ahora separada */}
+          {/* RUTA BACKOFFICE (Admin) - Esta SÍ se mantiene protegida */}
           <Route 
             path="/backoffice" 
             element={
