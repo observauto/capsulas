@@ -6,8 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
-// Usamos importación segura para los badges
-import { AVAILABLE_BADGES } from '@/lib/gamification';
 import { Trophy, Star, Target, Award, Clock, TrendingUp, Gift, CheckCircle2, X, Flame, LogIn, UserX, BookOpen, LayoutDashboard, ShieldCheck, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -19,15 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
+import { readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
 // ========================================================================================
-// 🛡️ FIX TÉCNICO DE IMPORTACIONES (NO AFECTA DISEÑO NI LÓGICA)
+// 🛡️ FIX TÉCNICO DE IMPORTACIONES
 // ========================================================================================
-// Detecta automáticamente si los archivos usan 'export default' o 'export { nombre }'
-// para evitar los errores de compilación que bloquean la app.
 
-// 1. Componentes UI
+// 1. Componentes UI (Manejo dinámico de exportaciones)
 import * as EditProfileModalModule from './EditProfileModal';
 import * as CapsuleCardModule from './CapsuleCard';
 import * as GamificationStatusModule from './GamificationStatus';
@@ -40,7 +36,6 @@ const GamificationStatus = (GamificationStatusModule as any).GamificationStatus 
 import * as CapsulesModule from '@/data/fullCapsules';
 const getSafeCapsules = () => {
   const mod = CapsulesModule as any;
-  // Busca el array de cápsulas donde sea que esté exportado
   return mod.default || mod.capsules || mod.fullCapsules || Object.values(mod).find((v) => Array.isArray(v)) || [];
 };
 const fullCapsules = getSafeCapsules();
@@ -69,11 +64,9 @@ const CATALOGO_PREMIOS = [
 ];
 
 const UnificadoDashboard = () => {
-  // Hooks originales
-  const { points, level, completedCapsules, earnedBadges, experience, addPoints, claimPrize } = useGamification();
+  const { points, level, completedCapsules, earnedBadges, experience, claimPrize } = useGamification();
   const { user, signOut } = useAuth();
   
-  // Estados originales
   const [userProfile, setUserProfile] = useState(BASE_USER_PROFILE);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
@@ -82,7 +75,6 @@ const UnificadoDashboard = () => {
   const [redeemedPrizes, setRedeemedPrizes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("resumen");
 
-  // Carga de perfil (Lógica original)
   useEffect(() => {
     if (user) {
       setUserProfile(prev => ({
@@ -92,7 +84,6 @@ const UnificadoDashboard = () => {
         user_id: user.id
       }));
       
-      // Cargar premios canjeados usando la lógica local original
       const savedPrizes = readUserScopedJSON('redeemed_prizes', user.id);
       if (savedPrizes) {
         setRedeemedPrizes(savedPrizes);
@@ -111,7 +102,6 @@ const UnificadoDashboard = () => {
   const handleRedeemClick = (prize: any) => {
     if (points >= prize.cost) {
       setSelectedPrize(prize);
-      // Generar código
       const code = `OBS-${Math.floor(Math.random() * 10000)}-${prize.id}`;
       setValidationCode(code);
       setShowRedeemModal(true);
@@ -139,7 +129,6 @@ const UnificadoDashboard = () => {
       const updatedPrizes = [...redeemedPrizes, newRedeemedPrize];
       setRedeemedPrizes(updatedPrizes);
       
-      // Guardado local original
       if (user) {
         writeUserScopedJSON('redeemed_prizes', updatedPrizes, user.id);
       }
@@ -188,10 +177,7 @@ const UnificadoDashboard = () => {
       {/* Tabs de Navegación */}
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         
-        {/* --- DISEÑO DE TABS (TU VERSIÓN) ---
-            Mobile: grid-cols-3 (2 filas). 
-            Desktop: inline-flex. 
-        */}
+        {/* --- DISEÑO DE TABS MÓVIL CORREGIDO (Grid 3x2) --- */}
         <div className="w-full overflow-visible">
             <TabsList className="w-full h-auto grid grid-cols-3 gap-1 p-1 bg-slate-100/80 md:inline-flex md:w-auto md:gap-1">
                 <TabsTrigger value="resumen" className="flex gap-2 items-center justify-center text-xs md:text-sm py-2 md:px-4">
