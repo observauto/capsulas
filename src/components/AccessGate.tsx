@@ -47,14 +47,11 @@ export default function AccessGate({ children }: AccessGateProps) {
     }
   };
 
-  // Estado de Carga: Usamos el MISMO fondo gradiente para mantener la estética
+  // FONDO UNIFICADO: Siempre usa el gradiente, incluso cargando
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
-          <Loader2 className="h-10 w-10 text-observauto-blue animate-spin" />
-          <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Cargando...</p>
-        </div>
+        <Loader2 className="h-12 w-12 text-observauto-blue animate-spin" />
       </div>
     );
   }
@@ -63,7 +60,6 @@ export default function AccessGate({ children }: AccessGateProps) {
     return <>{children}</>;
   }
 
-  // Render principal del Gate (Sin cambios visuales)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
