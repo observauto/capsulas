@@ -1,118 +1,128 @@
-import React from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { Shield, KeyRound, AlertTriangle, Loader2 } from 'lucide-react';
+import { SponsorLogo } from './SponsorLogo'; 
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { ACCESS_CODE } from '@/config/accessGate';
 
-type Props = {
+interface AccessGateProps {
   children: React.ReactNode;
-};
+}
 
-export default function AccessGate({ children }: Props) {
-  const { loading, accessCodeValid, validateAccessCode, user } = useAuth();
-  const [code, setCode] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [showAccessGate, setShowAccessGate] = React.useState(true);
+export default function AccessGate({ children }: AccessGateProps) {
+  const { isAccessGranted, grantAccess, loading } = useAuth();
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const { toast } = useToast();
 
-  // Leer si el AccessGate está activado (se puede desactivar fácilmente)
-  React.useEffect(() => {
-    const isActive = localStorage.getItem('access_gate_active');
-    // Por defecto activado, pero se puede desactivar con 'false'
-    setShowAccessGate(isActive !== 'false');
-  }, []);
+  const handleVerify = () => {
+    if (code === ACCESS_CODE) {
+      grantAccess();
+      toast({
+        title: "Acceso Correcto",
+        description: "Bienvenido a Cápsulas Observauto",
+        className: "bg-green-600 text-white border-none"
+      });
+    } else {
+      setAttempts(prev => prev + 1);
+      setError('Código incorrecto');
+      setCode('');
+      
+      if (attempts >= 2) {
+        toast({
+          title: "Acceso Denegado",
+          description: "Por favor contacta al administrador si olvidaste el código.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
 
-  // Si está cargando, mostrar loading
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleVerify();
+    }
+  };
+
+  // Mantiene el MISMO diseño visual mientras carga para evitar parpadeos negros
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center bg-white rounded-2xl p-8 shadow-xl border animate-in fade-in-0 zoom-in-95 duration-500">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Verificando acceso...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <Loader2 className="h-12 w-12 text-observauto-blue animate-spin" />
       </div>
     );
   }
 
-  // Si el código es válido y AccessGate está desactivado, mostrar contenido sin modal
-  if (accessCodeValid || user || !showAccessGate) {
+  if (isAccessGranted) {
     return <>{children}</>;
   }
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    const isValid = validateAccessCode(code.trim());
-    if (isValid) {
-      // No recargar, solo activar el acceso
-      // El estado se actualiza automáticamente en validateAccessCode
-    } else {
-      alert('Código incorrecto. Intenta nuevamente.');
-      setCode('');
-    }
-    setIsSubmitting(false);
-  };
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-[92%] max-w-md rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl p-8 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-500 slide-in-from-bottom-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-in zoom-in-75 duration-700 delay-200">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+        <div className="p-8 text-center space-y-6">
+          <div className="mx-auto w-20 h-20 bg-observauto-blue/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-observauto-blue/10">
+            <Shield className="w-10 h-10 text-observauto-blue" />
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-300">
-            Cápsulas Observauto
-          </h1>
-          <p className="text-sm text-gray-600 animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-500">
-            Acceso seguro a la plataforma
-          </p>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              Acceso Restringido
+            </h1>
+            <p className="text-slate-400">
+              Esta plataforma es de uso exclusivo. Por favor ingresa tu código de acceso.
+            </p>
+          </div>
+
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-start gap-3 text-left">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-yellow-200/80">
+              El acceso a esta plataforma está monitoreado y protegido.
+            </p>
+          </div>
         </div>
 
-        {/* Formulario de código */}
-        <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-700">
-          <form onSubmit={handleCodeSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Ingrese código de acceso
-              </label>
-              <input
-                autoFocus
-                aria-label="Código de acceso"
-                className="w-full rounded-xl border border-gray-200 px-6 py-4 text-xl text-center tracking-widest font-mono bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                placeholder="•••"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+        <div className="p-8 pt-0 space-y-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
+              <Input
                 type="password"
-                inputMode="numeric"
-                disabled={isSubmitting}
-                maxLength={3}
+                placeholder="Código de acceso"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  setError('');
+                }}
+                onKeyDown={handleKeyDown}
+                className="pl-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-observauto-blue focus:border-observauto-blue transition-all h-12 text-lg tracking-widest"
               />
             </div>
             
-            <button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
-              disabled={isSubmitting || code.length === 0}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Verificando...</span>
-                </div>
-              ) : (
-                'Acceder a la Plataforma'
-              )}
-            </button>
-          </form>
-        </div>
+            {error && (
+              <p className="text-red-400 text-sm font-medium animate-shake">
+                {error}
+              </p>
+            )}
+          </div>
 
-        {/* Indicadores */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-1000">
-          <div className="text-center space-y-1">
-            <p className="text-sm font-semibold text-blue-800">🔒 Acceso Protegido</p>
-            <p className="text-xs text-blue-600">Sesión válida por 1 hora</p>
-            <p className="text-xs text-blue-500">Puede activarse/desactivarse desde configuración</p>
+          <Button 
+            onClick={handleVerify}
+            className="w-full h-12 bg-observauto-blue hover:bg-observauto-blue/90 text-white font-semibold text-lg shadow-lg shadow-observauto-blue/20 transition-all duration-300"
+          >
+            Ingresar a la Plataforma
+          </Button>
+
+          <div className="pt-6 border-t border-white/10 flex flex-col items-center justify-center gap-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
+              Patrocinado por
+            </p>
+            <div className="opacity-70 hover:opacity-100 transition-opacity">
+               <SponsorLogo className="h-8 w-auto" />
+            </div>
           </div>
         </div>
       </div>

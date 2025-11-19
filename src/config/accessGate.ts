@@ -1,6 +1,2 @@
-export const ACCESS_GATE = {
-  enabled: true,  // Changed from: process.env.NEXT_PUBLIC_ACCESS_GATE_ENABLED !== "false"
-  passcode: "013",
-  ttlMs: 60 * 60 * 1000,
-  storageKey: "oa_access",
-} as const;
+export const ACCESS_CODE = '013';
+export const SESSION_DURATION = 3600000; // 1 hora en milisegundos (60 * 60 * 1000)
