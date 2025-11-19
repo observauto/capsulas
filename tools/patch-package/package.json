@@ -1,8 +1,0 @@
-{
-  "name": "patch-package",
-  "version": "0.0.0-local",
-  "bin": {
-    "patch-package": "./bin/patch-package.js"
-  },
-  "license": "MIT"
-}
