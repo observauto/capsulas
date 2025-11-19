@@ -24,7 +24,7 @@ const App = () => (
             <Route path="/capsula/:id" element={<FullCapsule />} />
             <Route path="/capsula/:id/quiz" element={<CapsuleQuiz />} />
             
-            {/* Ruta Unificada para Dashboard */}
+            {/* Ruta Unificada para Dashboard: Ambas direcciones llevan al mismo panel nuevo */}
             <Route path="/backoffice" element={<UnificadoDashboard />} />
             <Route path="/gamificacion" element={<UnificadoDashboard />} />
             
