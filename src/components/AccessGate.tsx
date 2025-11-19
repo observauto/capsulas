@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Shield, KeyRound, AlertTriangle } from 'lucide-react';
+import { Shield, KeyRound, AlertTriangle, Loader2 } from 'lucide-react'; // Agregado loader
 import { SponsorLogo } from './SponsorLogo'; 
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ACCESS_CODE, SESSION_DURATION } from '@/config/accessGate';
+import { ACCESS_CODE } from '@/config/accessGate';
 
 interface AccessGateProps {
   children: React.ReactNode;
 }
 
 export default function AccessGate({ children }: AccessGateProps) {
-  const { isAccessGranted, grantAccess } = useAuth();
+  const { isAccessGranted, grantAccess, loading } = useAuth(); // ✅ Usamos loading
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -47,10 +47,21 @@ export default function AccessGate({ children }: AccessGateProps) {
     }
   };
 
+  // ✅ CORRECCIÓN CRÍTICA: Si está cargando, NO mostrar el bloqueo, esperar.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="h-10 w-10 text-observauto-blue animate-spin" />
+      </div>
+    );
+  }
+
+  // Si ya tiene acceso (por localStorage o sesión activa), mostrar la app
   if (isAccessGranted) {
     return <>{children}</>;
   }
 
+  // Solo si NO está cargando y NO tiene acceso, mostrar el Gate
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
