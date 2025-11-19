@@ -7,8 +7,8 @@ import { Trophy, Star, BookOpen, Gift, User, History, LogOut, ShieldCheck, Layou
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
-// CORRECCIÓN BUILD: Cambio a importación por defecto para evitar error "is not exported"
-import fullCapsules from '@/data/fullCapsules'; 
+// CORRECCIÓN BUILD: La exportación real suele ser 'capsules', la renombramos a 'fullCapsules' aquí.
+import { capsules as fullCapsules } from '@/data/fullCapsules'; 
 import { toast } from "sonner";
 import CapsuleCard from '@/components/CapsuleCard';
 import GamificationStatus from '@/components/GamificationStatus';
