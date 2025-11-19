@@ -44,7 +44,7 @@ export const Navbar = () => {
           <a href="/#capsulas" className="text-sm font-medium transition-colors hover:text-primary">
             Cápsulas
           </a>
-          {/* CORRECCIÓN: El link de Premios ahora lleva al Dashboard, no al Backoffice */}
+          {/* CORRECCIÓN: Enlace correcto al Dashboard */}
           <a href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
             <Trophy className="h-4 w-4 text-amber-500" />
             Premios
@@ -88,12 +88,6 @@ export const Navbar = () => {
                     Canjear Premios
                   </DropdownMenuItem>
                   
-                  {/* Solo mostrar acceso a Backoffice si es admin (por ahora oculto para evitar confusiones) */}
-                  {/* <DropdownMenuItem onClick={() => navigateTo('/backoffice')}>
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    Admin Panel
-                  </DropdownMenuItem> */}
-                  
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -103,7 +97,7 @@ export const Navbar = () => {
               </DropdownMenu>
             </>
           ) : (
-            <Button onClick={() => document.getElementById('auth-trigger')?.click()}>
+            <Button id="auth-trigger" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
               <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
             </Button>
           )}
@@ -115,7 +109,7 @@ export const Navbar = () => {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu className="h-6 w-6" />
-              </SheetTrigger>
+              </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col gap-6 mt-6">
@@ -136,7 +130,6 @@ export const Navbar = () => {
                     <Button variant="ghost" className="justify-start" onClick={() => navigateTo('/#capsulas')}>
                         Cápsulas
                     </Button>
-                    {/* CORRECCIÓN: Link móvil también va al Dashboard */}
                     <Button variant="ghost" className="justify-start" onClick={() => navigateTo('/dashboard')}>
                         <Trophy className="mr-2 h-4 w-4" /> Premios y Puntos
                     </Button>
@@ -150,7 +143,7 @@ export const Navbar = () => {
                   ) : (
                     <Button className="w-full" onClick={() => {
                         setIsMobileMenuOpen(false);
-                        document.getElementById('auth-trigger')?.click();
+                        document.dispatchEvent(new CustomEvent('open-auth-modal'));
                     }}>
                       <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
                     </Button>
