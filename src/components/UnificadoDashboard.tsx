@@ -7,7 +7,8 @@ import { Trophy, Star, BookOpen, Gift, User, History, LogOut, ShieldCheck, Layou
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
-import { fullCapsules } from '@/data/fullCapsules';
+// CORRECCIÓN BUILD: Cambio a importación por defecto para evitar error "is not exported"
+import fullCapsules from '@/data/fullCapsules'; 
 import { toast } from "sonner";
 import CapsuleCard from '@/components/CapsuleCard';
 import GamificationStatus from '@/components/GamificationStatus';
@@ -94,11 +95,11 @@ const CapsulasTab = ({ completedCapsules }: { completedCapsules: string[] }) => 
   <div className="space-y-6 animate-in fade-in duration-500">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-slate-900">Tu Biblioteca de Aprendizaje</h3>
-      <span className="text-sm text-slate-500">{completedCapsules.length} de {fullCapsules.length} completadas</span>
+      <span className="text-sm text-slate-500">{completedCapsules.length} de {(fullCapsules || []).length} completadas</span>
     </div>
     
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {fullCapsules.map((capsule) => (
+      {(fullCapsules || []).map((capsule: Capsule) => (
         <CapsuleCard 
           key={capsule.id} 
           capsule={capsule}
@@ -233,12 +234,12 @@ export const UnificadoDashboard = () => {
   const [activeTab, setActiveTab] = useState("resumen");
   const [redeemedPrizes, setRedeemedPrizes] = useState<any[]>([]);
 
-  // Calcular stats reales
+  // Calcular stats reales, protegiendo fullCapsules por si es undefined
   const stats = {
     points: points,
     level: level,
     completedCapsules: completedIds.length,
-    totalCapsules: fullCapsules.length,
+    totalCapsules: (fullCapsules || []).length,
     nextLevelProgress: Math.min(100, Math.floor((experience % 1000) / 10)), // Ejemplo simplificado
   };
 
