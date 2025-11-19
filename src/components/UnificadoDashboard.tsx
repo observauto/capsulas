@@ -7,12 +7,25 @@ import { Trophy, Star, BookOpen, Gift, User, History, LogOut, ShieldCheck, Layou
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
-// CORRECCIÓN BUILD: La exportación real suele ser 'capsules', la renombramos a 'fullCapsules' aquí.
-import { capsules as fullCapsules } from '@/data/fullCapsules'; 
+
+// CORRECCIÓN DEFINITIVA DE IMPORTACIÓN:
+// Usamos 'import *' para traer todo el módulo y extraer la data sea cual sea su nombre de exportación.
+import * as CapsulesModule from '@/data/fullCapsules';
+
 import { toast } from "sonner";
 import CapsuleCard from '@/components/CapsuleCard';
 import GamificationStatus from '@/components/GamificationStatus';
 import { supabase } from '@/lib/supabase';
+
+// Extracción segura de los datos de cápsulas (Maneja exports: default, capsules, fullCapsules, o cualquiera)
+const getCapsulesData = (): Capsule[] => {
+  const module = CapsulesModule as any;
+  // Intenta encontrar el array en las exportaciones comunes o toma el primer valor exportado
+  const data = module.default || module.capsules || module.fullCapsules || Object.values(module)[0];
+  return Array.isArray(data) ? data : [];
+};
+
+const fullCapsules = getCapsulesData();
 
 // Sub-componentes para mantener el archivo limpio
 const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any[] }) => (
@@ -234,12 +247,12 @@ export const UnificadoDashboard = () => {
   const [activeTab, setActiveTab] = useState("resumen");
   const [redeemedPrizes, setRedeemedPrizes] = useState<any[]>([]);
 
-  // Calcular stats reales, protegiendo fullCapsules por si es undefined
+  // Calcular stats reales
   const stats = {
     points: points,
     level: level,
     completedCapsules: completedIds.length,
-    totalCapsules: (fullCapsules || []).length,
+    totalCapsules: fullCapsules.length,
     nextLevelProgress: Math.min(100, Math.floor((experience % 1000) / 10)), // Ejemplo simplificado
   };
 
