@@ -1,252 +1,92 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, User } from '@/lib/supabase'
-import { fullSync } from '@/lib/gamification-sync'
-import { setActiveUserId } from '@/lib/user-storage'
-import { toast } from '@/hooks/use-toast'
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: User | null
-  loading: boolean
-  isSyncing: boolean  // NUEVO: Flag de sincronización
-  signInWithGoogle: () => Promise<void>
-  signOut: () => Promise<void>
-  accessCodeValid: boolean
-  validateAccessCode: (code: string) => boolean
-  clearAccessCode: () => void
+  session: Session | null;
+  user: User | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  user: null,
+  loading: true,
+  signOut: async () => {},
+});
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isSyncing, setIsSyncing] = useState(false)  // NUEVO
-  const [accessCodeValid, setAccessCodeValid] = useState(false)
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
 
-  // Verificar código de acceso en localStorage
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const savedCode = localStorage.getItem('access_code_valid')
-    setAccessCodeValid(savedCode === 'true')
-  }, [])
+    let mounted = true;
 
-  useEffect(() => {
-    setActiveUserId(user?.id ?? null)
-  }, [user?.id])
-
-  // Cargar usuario al iniciar
-  useEffect(() => {
-    async function loadUser() {
+    const initAuth = async () => {
       try {
-        console.log('[AUTH] Cargando usuario inicial...')
-        const { data: { user: supabaseUser }, error } = await supabase.auth.getUser()
+        // 1. Obtener sesión actual
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        console.log('[AUTH] Usuario obtenido:', {
-          hasUser: !!supabaseUser,
-          userId: supabaseUser?.id,
-          userEmail: supabaseUser?.email,
-          error
-        })
-        
-        if (error) {
-          console.error('[AUTH] Error obteniendo usuario:', error)
-        } else if (supabaseUser) {
-          // Convertir usuario de Supabase a nuestro tipo User
-          const user: User = {
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-            created_at: supabaseUser.created_at || ''
-          }
-          setUser(user)
-          
-          console.log('[AUTH] Usuario establecido, ejecutando sincronización en background...')
-          // Sincronizar datos locales a Supabase EN BACKGROUND (sin bloquear)
-          handleDataSync(user.id, user.email).catch(error => {
-            console.error('[AUTH] Error en sync background:', error)
-          })
+        if (sessionError) throw sessionError;
+
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
         }
-      } catch (error) {
-        console.error('[AUTH] Error cargando usuario:', error)
-      } finally {
-        setLoading(false)  // IMPORTANTE: Siempre terminar el loading inmediatamente
-      }
-    }
-    loadUser()
-
-    // Listener para cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AUTH] Evento de auth:', event, {
-          hasSession: !!session,
-          userId: session?.user?.id,
-          userEmail: session?.user?.email
-        })
-
-        if (session?.user) {
-          const user: User = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
-            avatar_url: session.user.user_metadata?.avatar_url || null,
-            created_at: session.user.created_at || ''
-          }
-          setUser(user)
-
-          // Sincronizar datos solo en SIGNED_IN event EN BACKGROUND
-          if (event === 'SIGNED_IN') {
-            console.log('[AUTH] Sincronizando datos despues de login en background...')
-            handleDataSync(user.id, user.email).catch(error => {
-              console.error('[AUTH] Error en sync después de login:', error)
-            })
-
-            // Redirect to saved URL if exists
-            const returnToUrl = sessionStorage.getItem('returnToCapsule');
-            if (returnToUrl) {
-              console.log('[AUTH] Redirigiendo a:', returnToUrl);
-              sessionStorage.removeItem('returnToCapsule');
-              // Use setTimeout to ensure the sync is complete
-              setTimeout(() => {
-                window.location.href = returnToUrl;
-              }, 4000);
-            }
-          }
+      } catch (error: any) {
+        // Ignorar error específico de "falta sesión" ya que es normal para invitados
+        if (error.message?.includes('Auth session missing') || error.name === 'AuthSessionMissingError') {
+          console.log('[AUTH] Modo Invitado activo');
         } else {
-          // Algunos eventos (ej. INITIAL_SESSION) pueden dispararse sin sesión válida
-          // inmediatamente después de un SIGNED_IN. Evitamos limpiar el usuario
-          // salvo en eventos que representan un cierre real de sesión.
-          if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-            console.log('[AUTH] No hay sesion, limpiando usuario')
-            setUser(null)
-          } else {
-            console.log('[AUTH] Evento sin sesión, preservando estado actual')
-          }
+          console.error('[AUTH] Error verificando sesión:', error);
         }
-
-        setLoading(false)  // IMPORTANTE: Siempre terminar el loading inmediatamente
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // SINCRONIZACIÓN FORZADA - Se ejecuta en background (NO bloquea la UI)
-  const handleDataSync = async (userId: string, userEmail: string) => {
-    setIsSyncing(true)  // NUEVO: Marcar inicio de sincronización
-    
-    try {
-      console.log('[AUTH] ===== EJECUTANDO SINCRONIZACIÓN EN BACKGROUND =====');
-      console.log('[AUTH] User ID:', userId);
-      console.log('[AUTH] Email:', userEmail);
-      
-      // Timeout más corto (10 segundos) para no bloquear
-      const syncPromise = fullSync(userId, userEmail);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout en sincronización (10s)')), 10000)
-      );
-      
-      const result = await Promise.race([syncPromise, timeoutPromise]) as any;
-      
-      console.log('[AUTH] ===== RESULTADO DE SINCRONIZACIÓN EN BACKGROUND =====');
-      console.log('[AUTH] Success:', result.success);
-      console.log('[AUTH] Puntos migrados:', result.pointsMigrated);
-      console.log('[AUTH] Badges migrados:', result.badgesMigrated);
-      console.log('[AUTH] Puntos finales:', result.finalPoints);
-      console.log('[AUTH] Error:', result.error);
-      
-      if (result.success) {
-        // Mostrar toast solo si hay datos para migrar
-        if (result.pointsMigrated > 0 || result.badgesMigrated > 0) {
-          console.log('[AUTH] Mostrando toast de restauración en background');
-          toast({
-            title: "Datos restaurados exitosamente",
-            description: `Se restauraron ${result.pointsMigrated} puntos y ${result.badgesMigrated} logros. Total: ${result.finalPoints} puntos.`,
-            variant: "default"
-          });
+        
+        if (mounted) {
+          setSession(null);
+          setUser(null);
         }
-      } else {
-        console.error('[AUTH] ERROR EN SINCRONIZACIÓN EN BACKGROUND:', result.error);
-        // NO mostrar error en toast para evitar spam
-      }
-    } catch (error: any) {
-      console.error('[AUTH] EXCEPCIÓN EN handleDataSync (background):', error);
-      // NO mostrar error - es background y no debe interrumpir al usuario
-    } finally {
-      setIsSyncing(false)  // NUEVO: Marcar fin de sincronización
-      console.log('[AUTH] ===== SINCRONIZACIÓN EN BACKGROUND FINALIZADA =====');
-    }
-  }
-
-  const signInWithGoogle = async () => {
-    try {
-      // Check if there's a return URL saved in sessionStorage
-      const returnToUrl = sessionStorage.getItem('returnToCapsule');
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin // Use current origin as redirect URL
+      } finally {
+        if (mounted) {
+          setLoading(false);
         }
-      })
-
-      if (error) {
-        console.error('Error signing in with Google:', error.message)
-        throw error
       }
-    } catch (error) {
-      console.error('Google Sign-In error:', error)
-      throw error
-    }
-  }
+    };
+
+    initAuth();
+
+    // 2. Escuchar cambios de auth (Login/Logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Error signing out:', error.message)
-        throw error
-      }
-      setUser(null)
-    } catch (error) {
-      console.error('Sign out error:', error)
-      throw error
-    }
-  }
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+  };
 
-  const validateAccessCode = (code: string) => {
-    const isValid = code.trim() === '013'
-    if (isValid) {
-      localStorage.setItem('access_code_valid', 'true')
-      setAccessCodeValid(true)
-    }
-    return isValid
-  }
+  const value = {
+    session,
+    user,
+    loading,
+    signOut,
+  };
 
-  const clearAccessCode = () => {
-    localStorage.removeItem('access_code_valid')
-    setAccessCodeValid(false)
-  }
-
-  return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      isSyncing,  // NUEVO: Exponer flag
-      signInWithGoogle,
-      signOut,
-      accessCodeValid,
-      validateAccessCode,
-      clearAccessCode
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
