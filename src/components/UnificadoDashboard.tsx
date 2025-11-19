@@ -7,32 +7,46 @@ import { Trophy, Star, BookOpen, Gift, User, History, LogOut, ShieldCheck, Layou
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
-
-// ---------------------------------------------------------------------------
-// ESTRATEGIA DE IMPORTACIÓN SEGURA
-// ---------------------------------------------------------------------------
-import * as CapsulesModule from '@/data/fullCapsules';
-import { CapsuleCard } from '@/components/CapsuleCard'; 
-// ---------------------------------------------------------------------------
-
 import { toast } from "sonner";
-
-// CORRECCIÓN BUILD: Cambiamos a importación nombrada { } porque no tiene export default
-import { GamificationStatus } from '@/components/GamificationStatus';
-
 import { supabase } from '@/lib/supabase';
 
-// Helper para extraer datos de cápsulas independientemente de cómo se exporten
+// =============================================================================
+// 🛡️ ESTRATEGIA DE IMPORTACIÓN BLINDADA (BULLETPROOF IMPORTS)
+// Importamos todo el módulo para detectar dinámicamente si es 'default' o 'named'
+// =============================================================================
+
+// 1. Data
+import * as CapsulesModule from '@/data/fullCapsules';
+
+// 2. Componentes
+import * as CapsuleCardModule from '@/components/CapsuleCard';
+import * as GamificationStatusModule from '@/components/GamificationStatus';
+
+// 🛠️ Resolución Dinámica de Componentes
+// Intenta encontrar el componente en .default o en la exportación nombrada
+const CapsuleCard = (CapsuleCardModule as any).CapsuleCard || (CapsuleCardModule as any).default;
+const GamificationStatus = (GamificationStatusModule as any).GamificationStatus || (GamificationStatusModule as any).default;
+
+// 🛠️ Resolución Dinámica de Datos
 const getCapsulesData = (): Capsule[] => {
   const module = CapsulesModule as any;
-  const data = module.default || module.capsules || module.fullCapsules || module.data || Object.values(module)[0];
+  // Busca arrays en las exportaciones comunes
+  const data = module.default || module.capsules || module.fullCapsules || module.data || Object.values(module).find(val => Array.isArray(val));
   return Array.isArray(data) ? data : [];
 };
 
 const fullCapsules = getCapsulesData();
 
-// --- SUB-COMPONENTES ---
+// 🔍 DEBUG LOGGER (Para ver en consola qué está fallando si persiste)
+console.log("[DASHBOARD DEBUG]", {
+  CapsuleCardExists: !!CapsuleCard,
+  GamificationStatusExists: !!GamificationStatus,
+  CapsulesCount: fullCapsules.length
+});
 
+// =============================================================================
+
+// Sub-componentes internos
 const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any[] }) => (
   <div className="space-y-6 animate-in fade-in duration-500">
     {/* Stats Grid */}
@@ -45,7 +59,7 @@ const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any
         <CardContent>
           <div className="text-2xl font-bold text-blue-700">{stats.level}</div>
           <p className="text-xs text-blue-600 mt-1">{stats.nextLevelProgress}% para el siguiente nivel</p>
-          <Progress value={stats.nextLevelProgress} className="h-2 mt-2 bg-blue-200" indicatorClassName="bg-blue-600" />
+          <Progress value={stats.nextLevelProgress || 0} className="h-2 mt-2 bg-blue-200" indicatorClassName="bg-blue-600" />
         </CardContent>
       </Card>
       <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 shadow-sm">
@@ -79,7 +93,7 @@ const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {recentActivity.length > 0 ? (
+        {recentActivity && recentActivity.length > 0 ? (
           <div className="space-y-4">
             {recentActivity.map((activity, i) => (
               <div key={i} className="flex items-center justify-between border-b border-slate-100 last:border-0 pb-3 last:pb-0">
@@ -113,24 +127,32 @@ const CapsulasTab = ({ completedCapsules }: { completedCapsules: string[] }) => 
   <div className="space-y-6 animate-in fade-in duration-500">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-slate-900">Tu Biblioteca de Aprendizaje</h3>
-      <span className="text-sm text-slate-500">{completedCapsules.length} de {(fullCapsules || []).length} completadas</span>
+      <span className="text-sm text-slate-500">{completedCapsules?.length || 0} de {(fullCapsules || []).length} completadas</span>
     </div>
     
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {(fullCapsules || []).map((capsule: Capsule) => (
-        <CapsuleCard 
-          key={capsule.id} 
-          capsule={capsule}
-          onClick={() => window.location.href = `/capsula/${capsule.id}`}
-        />
-      ))}
+      {/* Renderizado Seguro de Cápsulas */}
+      {fullCapsules && fullCapsules.length > 0 ? (
+        fullCapsules.map((capsule: Capsule) => {
+          if (!CapsuleCard) return null; // Protección contra fallo de componente
+          return (
+            <CapsuleCard 
+              key={capsule.id} 
+              capsule={capsule}
+              onClick={() => window.location.href = `/capsula/${capsule.id}`}
+            />
+          );
+        })
+      ) : (
+        <p className="text-slate-500">Cargando cápsulas...</p>
+      )}
     </div>
   </div>
 );
 
 const InsigniasTab = () => (
    <div className="space-y-6 animate-in fade-in duration-500">
-       <GamificationStatus />
+       {GamificationStatus ? <GamificationStatus /> : <p>Componente de insignias no disponible.</p>}
    </div>
 );
 
@@ -140,7 +162,6 @@ const PremiosTab = ({ availablePrizes, onRedeem }: { availablePrizes: any[], onR
       {availablePrizes.map((prize) => (
         <Card key={prize.id} className="overflow-hidden hover:shadow-md transition-shadow border-slate-200">
           <div className="h-48 bg-slate-100 relative">
-             {/* Placeholder para imagen del premio */}
              <div className="absolute inset-0 flex items-center justify-center text-slate-400">
                 <Gift className="h-12 w-12" />
              </div>
@@ -178,7 +199,7 @@ const ReclamadosTab = ({ redeemedPrizes }: { redeemedPrizes: any[] }) => (
     <div className="space-y-6 animate-in fade-in duration-500">
       <h3 className="text-lg font-semibold text-slate-900 mb-4">Mis Premios Canjeados</h3>
       <div className="grid grid-cols-1 gap-4">
-        {redeemedPrizes.length > 0 ? (
+        {redeemedPrizes && redeemedPrizes.length > 0 ? (
           redeemedPrizes.map((item, index) => (
             <Card key={index} className="border-l-4 border-l-green-500 shadow-sm">
               <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -254,9 +275,9 @@ export const UnificadoDashboard = () => {
   const stats = {
     points: points,
     level: level,
-    completedCapsules: completedIds.length,
-    totalCapsules: (fullCapsules || []).length,
-    nextLevelProgress: Math.min(100, Math.floor((experience % 1000) / 10)),
+    completedCapsules: completedIds?.length || 0,
+    totalCapsules: fullCapsules.length,
+    nextLevelProgress: Math.min(100, Math.floor(((experience || 0) % 1000) / 10)),
   };
 
   const recentActivity = [
