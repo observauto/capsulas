@@ -22,9 +22,10 @@ import {
 import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
 // ========================================================================================
-// 🛡️ FIX CRÍTICO DE BUILD: ESTRATEGIA DE IMPORTACIÓN BLINDADA
+// 🛡️ FIX TÉCNICO DE IMPORTACIONES (NO AFECTA DISEÑO NI LÓGICA)
 // ========================================================================================
-// Esto evita los errores "is not exported" detectando automáticamente cómo se exporta cada archivo.
+// Detecta automáticamente si los archivos usan 'export default' o 'export { nombre }'
+// para evitar los errores de compilación que bloquean la app.
 
 // 1. Componentes UI
 import * as EditProfileModalModule from './EditProfileModal';
@@ -39,14 +40,14 @@ const GamificationStatus = (GamificationStatusModule as any).GamificationStatus 
 import * as CapsulesModule from '@/data/fullCapsules';
 const getSafeCapsules = () => {
   const mod = CapsulesModule as any;
-  // Busca el array en default, capsules, fullCapsules o la primera exportación que sea array
+  // Busca el array de cápsulas donde sea que esté exportado
   return mod.default || mod.capsules || mod.fullCapsules || Object.values(mod).find((v) => Array.isArray(v)) || [];
 };
 const fullCapsules = getSafeCapsules();
 // ========================================================================================
 
 
-// Datos base - Lógica original restaurada
+// Datos base - Lógica original intacta
 const BASE_USER_PROFILE = {
   id: '1',
   user_id: 'demo-user',
@@ -59,7 +60,7 @@ const BASE_USER_PROFILE = {
   cedula: ''
 };
 
-// Catálogo original de premios
+// Catálogo original de premios (Restaurado)
 const CATALOGO_PREMIOS = [
   { id: 1, name: "Kit de Limpieza BYD", description: "Mantén tu vehículo impecable con productos oficiales.", cost: 500, image: null },
   { id: 2, name: "Gorra Oficial Observauto", description: "Protégete del sol con estilo.", cost: 300, image: null },
@@ -81,7 +82,7 @@ const UnificadoDashboard = () => {
   const [redeemedPrizes, setRedeemedPrizes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("resumen");
 
-  // Carga de perfil
+  // Carga de perfil (Lógica original)
   useEffect(() => {
     if (user) {
       setUserProfile(prev => ({
@@ -91,7 +92,7 @@ const UnificadoDashboard = () => {
         user_id: user.id
       }));
       
-      // Cargar premios canjeados
+      // Cargar premios canjeados usando la lógica local original
       const savedPrizes = readUserScopedJSON('redeemed_prizes', user.id);
       if (savedPrizes) {
         setRedeemedPrizes(savedPrizes);
@@ -138,6 +139,7 @@ const UnificadoDashboard = () => {
       const updatedPrizes = [...redeemedPrizes, newRedeemedPrize];
       setRedeemedPrizes(updatedPrizes);
       
+      // Guardado local original
       if (user) {
         writeUserScopedJSON('redeemed_prizes', updatedPrizes, user.id);
       }
@@ -186,9 +188,9 @@ const UnificadoDashboard = () => {
       {/* Tabs de Navegación */}
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         
-        {/* --- CORRECCIÓN UX SOLICITADA ---
-            Mobile: grid-cols-3 (2 filas de 3 botones). 
-            Desktop: inline-flex normal. 
+        {/* --- DISEÑO DE TABS (TU VERSIÓN) ---
+            Mobile: grid-cols-3 (2 filas). 
+            Desktop: inline-flex. 
         */}
         <div className="w-full overflow-visible">
             <TabsList className="w-full h-auto grid grid-cols-3 gap-1 p-1 bg-slate-100/80 md:inline-flex md:w-auto md:gap-1">
