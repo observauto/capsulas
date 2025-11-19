@@ -47,7 +47,7 @@ export default function AccessGate({ children }: AccessGateProps) {
     }
   };
 
-  // ✅ CORRECCIÓN VISUAL: Si está cargando, usa el MISMO fondo degradado (no negro)
+  // Mantiene el MISMO diseño visual mientras carga para evitar parpadeos negros
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -56,16 +56,13 @@ export default function AccessGate({ children }: AccessGateProps) {
     );
   }
 
-  // Si ya tiene acceso, mostrar la app directamente
   if (isAccessGranted) {
     return <>{children}</>;
   }
 
-  // Pantalla de Acceso "013" (Diseño Original Intacto)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
-        {/* Header Visual */}
         <div className="p-8 text-center space-y-6">
           <div className="mx-auto w-20 h-20 bg-observauto-blue/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-observauto-blue/10">
             <Shield className="w-10 h-10 text-observauto-blue" />
@@ -88,7 +85,6 @@ export default function AccessGate({ children }: AccessGateProps) {
           </div>
         </div>
 
-        {/* Formulario */}
         <div className="p-8 pt-0 space-y-6">
           <div className="space-y-4">
             <div className="relative">
