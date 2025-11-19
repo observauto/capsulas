@@ -1,149 +1,167 @@
-// Ruta del archivo: src/context/AuthContext.tsx
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+import { ACCESS_CODE, SESSION_DURATION } from '@/config/accessGate';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase, User } from '@/lib/supabase';
-import { fullSync, FullSyncResult } from '@/lib/gamification-sync';
-import { setActiveUserId } from '@/lib/user-storage';
-import { toast } from '@/hooks/use-toast';
+interface UserProfile {
+  id: string;
+  email: string;
+  display_name?: string;
+  role: 'user' | 'admin' | 'superadmin' | 'sponsor';
+  points: number;
+  avatar_url?: string;
+}
 
 interface AuthContextType {
+  session: Session | null;
   user: User | null;
+  userProfile: UserProfile | null;
   loading: boolean;
-  isSyncing: boolean;
+  isAccessGranted: boolean;
+  grantAccess: () => void;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  accessCodeValid: boolean;
-  validateAccessCode: (code: string) => boolean;
-  clearAccessCode: () => void;
+  checkAccessCode: (code: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [accessCodeValid, setAccessCodeValid] = useState(false);
+  const [isAccessGranted, setIsAccessGranted] = useState(false);
+  const { toast } = useToast();
 
-  const checkAccessCode = useCallback(() => {
-    try {
-      return localStorage.getItem('access_code_valid') === 'true';
-    } catch {
-      return false;
+  // Verificar acceso inicial (Gate 013)
+  useEffect(() => {
+    const storedAccess = localStorage.getItem('access_granted');
+    const accessTimestamp = localStorage.getItem('access_timestamp');
+
+    if (storedAccess === 'true' && accessTimestamp) {
+      const now = new Date().getTime();
+      const diff = now - parseInt(accessTimestamp);
+      
+      if (diff < SESSION_DURATION) {
+        setIsAccessGranted(true);
+      } else {
+        localStorage.removeItem('access_granted');
+        localStorage.removeItem('access_timestamp');
+        setIsAccessGranted(false);
+      }
     }
+    // Importante: setLoading NO debe depender de 'loading' en el array de dependencias
+    setLoading(false);
   }, []);
 
+  // Escuchar cambios de sesión en Supabase
   useEffect(() => {
-    setAccessCodeValid(checkAccessCode());
-  }, [checkAccessCode]);
-  
-  useEffect(() => {
-    setActiveUserId(user?.id ?? null);
-  }, [user?.id]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) fetchUserProfile(session.user.id);
+    });
 
-  useEffect(() => {
-    setLoading(true);
-    const authTimeout = setTimeout(() => {
-        console.warn("[AUTH] Timeout: Autenticación inicial tardó mucho. Forzando fin de carga.");
-        if (loading) setLoading(false);
-    }, 15000);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) fetchUserProfile(session.user.id);
+      else setUserProfile(null);
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AUTH] Evento de auth:', event, { hasSession: !!session });
-        clearTimeout(authTimeout);
-
-        const supabaseUser = session?.user;
-        if (supabaseUser) {
-          const appUser: User = {
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuario',
-            avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-            created_at: supabaseUser.created_at || new Date().toISOString()
-          };
-          setUser(appUser);
-          if (event === 'SIGNED_IN') {
-            handleDataSync(appUser.id, appUser.email);
-          }
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(authTimeout);
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleDataSync = async (userId: string, userEmail: string) => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    console.log('[AUTH] Iniciando sincronización de datos...');
-
+  const fetchUserProfile = async (userId: string) => {
     try {
-      const syncPromise = fullSync(userId, userEmail);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout en sincronización (30s)')), 30000)
-      );
-      const result = await Promise.race([syncPromise, timeoutPromise]) as FullSyncResult;
-      if (result.success && (result.pointsMigrated > 0 || result.badgesMigrated > 0)) {
-        toast({
-          title: "Datos restaurados",
-          description: `Se han restaurado ${result.pointsMigrated} puntos y ${result.badgesMigrated} logros.`,
-        });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setUserProfile(data);
       }
-    } catch (error: any) {
-      console.error('[AUTH] Error en sincronización:', error.message);
-    } finally {
-      setIsSyncing(false);
-      window.dispatchEvent(new CustomEvent('gamification:syncComplete'));
-      console.log('[AUTH] Sincronización finalizada.');
+    } catch (error) {
+      console.error('Error:', error);
     }
+  };
+
+  const grantAccess = () => {
+    setIsAccessGranted(true);
+    localStorage.setItem('access_granted', 'true');
+    localStorage.setItem('access_timestamp', new Date().getTime().toString());
+  };
+
+  const checkAccessCode = (code: string): boolean => {
+    if (code === ACCESS_CODE) {
+      grantAccess();
+      return true;
+    }
+    return false;
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            prompt: 'select_account'
+          }
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error al iniciar sesión",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    clearAccessCode();
-  };
-
-  const validateAccessCode = (code: string) => {
-    const isValid = code.trim() === '013';
-    if (isValid) {
-      localStorage.setItem('access_code_valid', 'true');
-      setAccessCodeValid(true);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setUserProfile(null);
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente",
+      });
+    } catch (error: any) {
+      console.error('Error signing out:', error);
     }
-    return isValid;
-  };
-
-  const clearAccessCode = () => {
-    localStorage.removeItem('access_code_valid');
-    setAccessCodeValid(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isSyncing, signInWithGoogle, signOut, accessCodeValid, validateAccessCode, clearAccessCode }}>
+    <AuthContext.Provider value={{
+      session,
+      user,
+      userProfile,
+      loading,
+      isAccessGranted,
+      grantAccess,
+      signInWithGoogle,
+      signOut,
+      checkAccessCode
+    }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
