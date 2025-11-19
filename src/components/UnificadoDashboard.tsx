@@ -9,15 +9,17 @@ import { useAuth } from '@/context/AuthContext';
 import { Capsule } from '@/types/capsule';
 
 // ---------------------------------------------------------------------------
-// ESTRATEGIA DE IMPORTACIÓN SEGURA (Para evitar errores de compilación anteriores)
+// ESTRATEGIA DE IMPORTACIÓN SEGURA
 // ---------------------------------------------------------------------------
 import * as CapsulesModule from '@/data/fullCapsules';
 import { CapsuleCard } from '@/components/CapsuleCard'; 
-// Nota: Usamos { CapsuleCard } porque el error previo indicó que no había export default.
 // ---------------------------------------------------------------------------
 
 import { toast } from "sonner";
-import GamificationStatus from '@/components/GamificationStatus';
+
+// CORRECCIÓN BUILD: Cambiamos a importación nombrada { } porque no tiene export default
+import { GamificationStatus } from '@/components/GamificationStatus';
+
 import { supabase } from '@/lib/supabase';
 
 // Helper para extraer datos de cápsulas independientemente de cómo se exporten
@@ -29,7 +31,7 @@ const getCapsulesData = (): Capsule[] => {
 
 const fullCapsules = getCapsulesData();
 
-// --- SUB-COMPONENTES PARA MANTENER EL CÓDIGO LIMPIO ---
+// --- SUB-COMPONENTES ---
 
 const ResumenTab = ({ stats, recentActivity }: { stats: any, recentActivity: any[] }) => (
   <div className="space-y-6 animate-in fade-in duration-500">
@@ -326,11 +328,7 @@ export const UnificadoDashboard = () => {
       </div>
 
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        {/* CORRECCIÓN UX APLICADA:
-           1. 'w-full overflow-x-auto': Habilita el scroll horizontal.
-           2. 'TabsList': Diseño fluido para que no rompa.
-           3. 'TabsTrigger': 'whitespace-nowrap' para que el texto siempre esté en una línea.
-        */}
+        {/* CORRECCIÓN UX: w-full overflow-x-auto para móviles */}
         <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0">
             <TabsList className="w-full justify-start md:justify-center h-auto p-1 bg-slate-100/80 backdrop-blur-sm inline-flex min-w-full md:min-w-0">
             {[
