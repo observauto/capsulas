@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Shield, KeyRound, AlertTriangle, Loader2 } from 'lucide-react'; // Agregado loader
+import { Shield, KeyRound, AlertTriangle, Loader2 } from 'lucide-react';
 import { SponsorLogo } from './SponsorLogo'; 
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -12,7 +12,7 @@ interface AccessGateProps {
 }
 
 export default function AccessGate({ children }: AccessGateProps) {
-  const { isAccessGranted, grantAccess, loading } = useAuth(); // ✅ Usamos loading
+  const { isAccessGranted, grantAccess, loading } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -47,21 +47,23 @@ export default function AccessGate({ children }: AccessGateProps) {
     }
   };
 
-  // ✅ CORRECCIÓN CRÍTICA: Si está cargando, NO mostrar el bloqueo, esperar.
+  // Estado de Carga: Usamos el MISMO fondo gradiente para mantener la estética
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="h-10 w-10 text-observauto-blue animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+          <Loader2 className="h-10 w-10 text-observauto-blue animate-spin" />
+          <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">Cargando...</p>
+        </div>
       </div>
     );
   }
 
-  // Si ya tiene acceso (por localStorage o sesión activa), mostrar la app
   if (isAccessGranted) {
     return <>{children}</>;
   }
 
-  // Solo si NO está cargando y NO tiene acceso, mostrar el Gate
+  // Render principal del Gate (Sin cambios visuales)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
