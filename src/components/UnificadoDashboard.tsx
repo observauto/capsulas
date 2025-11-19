@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Panel1EndUserDashboard } from "@/components/backoffice/Panel1EndUserDashboard";
-import { RedeemedRewards } from "@/components/backoffice/RedeemedRewards";
-import { CompletedCapsules } from "@/components/backoffice/CompletedCapsules";
+// CORRECCIÓN: Importaciones por defecto (sin llaves) para los paneles existentes
+import Panel1EndUserDashboard from "@/components/backoffice/Panel1EndUserDashboard";
+import RedeemedRewards from "@/components/backoffice/RedeemedRewards";
+import CompletedCapsules from "@/components/backoffice/CompletedCapsules";
+
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
@@ -43,9 +45,7 @@ export const UnificadoDashboard = () => {
 
       <Tabs defaultValue="overview" className="w-full space-y-6" onValueChange={setActiveTab}>
         
-        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL) 
-            Aquí se define 'grid-cols-3' para que en móvil se vean 3 arriba y 3 abajo.
-        */}
+        {/* BARRA DE NAVEGACIÓN "ARMÓNICA" (MÓVIL: GRID 2 LÍNEAS / DESKTOP: LINEAL) */}
         <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50 rounded-xl md:flex md:w-auto md:bg-muted md:gap-1">
           
           <TabsTrigger 
