@@ -44,20 +44,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date().getTime();
       const diff = now - parseInt(accessTimestamp);
       
-      // Verifica si la sesión del gate (1 hora) sigue siendo válida
       if (diff < SESSION_DURATION) {
         setIsAccessGranted(true);
       } else {
-        // Si expiró, limpia el storage y bloquea el acceso
         localStorage.removeItem('access_granted');
         localStorage.removeItem('access_timestamp');
         setIsAccessGranted(false);
       }
     }
+    // Importante: setLoading NO debe depender de 'loading' en el array de dependencias
     setLoading(false);
   }, []);
 
-  // Escuchar cambios de sesión en Supabase (Auth Real)
+  // Escuchar cambios de sesión en Supabase
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
