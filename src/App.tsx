@@ -47,15 +47,13 @@ const AppContent = () => {
           <Route path="/capsula/:id" element={<FullCapsule />} />
           <Route path="/capsula/:id/quiz" element={<CapsuleQuiz />} />
           
-          {/* CORRECCIÓN: El Dashboard ahora es PÚBLICO (accesible para invitados).
-             El propio componente UnificadoDashboard maneja internamente si muestra datos o "Modo Invitado".
-          */}
+          {/* RUTA DASHBOARD: Pública para ver premios, el componente maneja estado invitado */}
           <Route 
             path="/dashboard" 
             element={<UnificadoDashboard />} 
           />
 
-          {/* RUTA BACKOFFICE (Admin) - Esta SÍ se mantiene protegida */}
+          {/* RUTA BACKOFFICE (Admin): Protegida */}
           <Route 
             path="/backoffice" 
             element={

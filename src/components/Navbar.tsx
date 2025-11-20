@@ -44,7 +44,7 @@ export const Navbar = () => {
           <a href="/#capsulas" className="text-sm font-medium transition-colors hover:text-primary">
             Cápsulas
           </a>
-          {/* CORRECCIÓN: Enlace correcto al Dashboard */}
+          {/* CORRECCIÓN: Link directo al Dashboard de Usuario */}
           <a href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
             <Trophy className="h-4 w-4 text-amber-500" />
             Premios
