@@ -22,7 +22,7 @@ import {
 import { readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 
 // ========================================================================================
-// 🛡️ FIX TÉCNICO DE IMPORTACIONES (NO AFECTA LÓGICA)
+// 🛡️ FIX TÉCNICO DE IMPORTACIONES
 // ========================================================================================
 // Detecta automáticamente cómo importar los archivos para evitar errores de compilación.
 
@@ -35,7 +35,7 @@ const EditProfileModal = (EditProfileModalModule as any).EditProfileModal || (Ed
 const CapsuleCard = (CapsuleCardModule as any).CapsuleCard || (CapsuleCardModule as any).default;
 const GamificationStatus = (GamificationStatusModule as any).GamificationStatus || (GamificationStatusModule as any).default;
 
-// 2. Datos (fullCapsules) - Soluciona el error: "capsules is not exported"
+// 2. Datos (fullCapsules)
 import * as CapsulesModule from '@/data/fullCapsules';
 const getSafeCapsules = () => {
   const mod = CapsulesModule as any;
@@ -152,11 +152,13 @@ const UnificadoDashboard = () => {
     }
   };
 
+  // CORRECCIÓN BLINDADA CONTRA PANTALLA BLANCA:
+  // Agregamos `?` y `||` para que nunca falle si los datos son undefined
   const stats = {
     points: points || 0,
     level: level || 1,
-    completedCapsules: completedCapsules.length,
-    totalCapsules: fullCapsules.length,
+    completedCapsules: completedCapsules?.length || 0, // <-- AQUÍ ESTABA EL ERROR
+    totalCapsules: fullCapsules?.length || 0,          // <-- Y AQUÍ
     nextLevelProgress: Math.min(100, Math.floor(((experience || 0) % 1000) / 10)),
   };
 
@@ -186,10 +188,7 @@ const UnificadoDashboard = () => {
       {/* Tabs de Navegación */}
       <Tabs defaultValue="resumen" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         
-        {/* CORRECCIÓN UX (DISEÑO MÓVIL SOLICITADO):
-            - Mobile (Default): grid grid-cols-3 -> Crea una cuadrícula de 3 columnas (resultando en 2 filas para 6 elementos).
-            - Desktop (md): inline-flex -> Vuelve al diseño original de línea.
-        */}
+        {/* CORRECCIÓN UX SOLICITADA: Grid móvil 3x2 */}
         <div className="w-full overflow-visible">
             <TabsList className="w-full h-auto grid grid-cols-3 gap-1 p-1 bg-slate-100/80 md:inline-flex md:w-auto md:gap-1">
                 <TabsTrigger value="resumen" className="flex gap-2 items-center justify-center text-xs md:text-sm py-2 md:px-4">
@@ -230,20 +229,19 @@ const UnificadoDashboard = () => {
                         <div className="text-2xl font-bold text-blue-600 flex items-center gap-2">
                             {stats.completedCapsules} <span className="text-sm text-slate-400 font-normal">/ {stats.totalCapsules}</span>
                         </div>
-                        <Progress value={(stats.completedCapsules / stats.totalCapsules) * 100} className="h-2 mt-2" />
+                        <Progress value={(stats.completedCapsules / (stats.totalCapsules || 1)) * 100} className="h-2 mt-2" />
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">Insignias Ganadas</CardTitle></CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-purple-600 flex items-center gap-2">
-                            {earnedBadges.length} <Award className="h-5 w-5 text-purple-500"/>
+                            {earnedBadges?.length || 0} <Award className="h-5 w-5 text-purple-500"/>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Botón para ir a Cápsulas si no hay actividad */}
             {stats.completedCapsules === 0 && (
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
                     <CardContent className="flex flex-col items-center py-8 text-center">
@@ -267,7 +265,7 @@ const UnificadoDashboard = () => {
                         title={capsule.title}
                         description={capsule.summary}
                         icon={BookOpen}
-                        isCompleted={completedCapsules.includes(capsule.id)}
+                        isCompleted={completedCapsules?.includes(capsule.id)}
                         onClick={() => window.location.href = `/capsula/${capsule.id}`}
                     />
                 ))}
