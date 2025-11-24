@@ -1,0 +1,74 @@
+Prompt Inicial para Nuevo Chat (Copia y Pega Esto)
+Hola, Gemini. Estoy trabajando en un proyecto de React llamado "Cápsulas Observauto" y necesito tu ayuda para solucionar varios bugs críticos. Hemos estado trabajando en una sesión anterior que alcanzó su límite de tokens, así que aquí te proporciono todo el contexto para continuar exactamente donde lo dejamos.
+Contexto General:
+Proyecto: Una aplicación web de micro-lecciones sobre automóviles, construida con React, Vite, TypeScript, Supabase y Tailwind CSS.
+Objetivo Principal: Corregir una serie de errores críticos que impiden el funcionamiento de la autenticación, la gamificación (puntos, insignias) y la persistencia de datos del usuario.
+Metodología Acordada: Trabajaremos solucionando un problema a la vez. Tú me proporcionas el código completo de los archivos a modificar, yo lo implemento, verifico el resultado y te doy confirmación para pasar al siguiente punto.
+Historial de Correcciones Realizadas (Lo que ya hemos hecho):
+Estabilización del Núcleo:
+Se corrigió el flowType en supabase.ts a 'pkce', eliminando bucles de login y pantallas en blanco.
+Se refactorizaron los contextos (AuthContext, GamificationContext) para manejar los estados de carga y evitar bucles de "Verificando acceso...".
+Se corrigieron múltiples errores de compilación (build errors) en Vercel.
+Implementación de Persistencia en Base de Datos:
+Se crearon las tablas user_redeemed_prizes y user_completed_capsules en Supabase con sus políticas de seguridad (RLS).
+Se modificó la lógica para que los Premios Canjeados se guarden y lean correctamente desde Supabase, logrando la persistencia entre dispositivos.
+Se implementó la lógica para que las Cápsulas Completadas e Insignias se guarden en Supabase al completar una acción.
+Punto Actual del Trabajo (En qué paso estamos):
+Problema Crítico Actual a Resolver:
+A pesar de haber implementado el código para guardar las cápsulas completadas y las insignias en Supabase, los datos no se cargan ni se muestran correctamente en el dashboard del usuario.
+Síntoma 1 (Resumen): La tarjeta "Cápsulas Completas" en la pestaña "Resumen" del dashboard siempre muestra "0", aunque el usuario haya completado cápsulas.
+Síntoma 2 (Tab de Cápsulas): La pestaña "Cápsulas" siempre muestra el mensaje "No hay cápsulas completadas".
+Síntoma 3 (Insignias): Las insignias ganadas (que se ven en el GamificationContext) no se cargan correctamente en el dashboard, apareciendo como "0" o perdiéndose entre sesiones.
+Hipótesis del Problema:
+Existe una condición de carrera (race condition). El UnificadoDashboard intenta cargar los datos (cápsulas, premios) y el GamificationContext intenta cargar las insignias antes de que la sesión del usuario esté completamente validada en el backend de Supabase. Como resultado, Supabase devuelve una lista vacía porque el usuario "aún no tiene permisos", y los componentes no reintentan la carga de datos una vez que la sesión está lista.
+Roadmap Maestro del Proyecto (Estado Actualizado)
+Esta es la guía completa de requisitos. He marcado el estado de cada punto basado en nuestro progreso hasta ahora.
+1. 🌐 Requisitos Generales y de Marca
+[CORREGIDO ✅] - Nombre del Proyecto: "Cápsulas Observauto"
+[CORREGIDO ✅] - Contenido: Conocimiento automotriz general
+[CORREGIDO ✅] - Branding Sponsors: Genérico, no atado a una marca.
+[CORREGIDO ✅] - Diseño (Layout): Base implementada.
+[CORREGIDO ✅] - Tipografía: Fuente "Inter".
+[CORREGIDO ✅] - Plataforma Técnica: React, Vite, Supabase.
+[CORREGIDO ✅] - Diseño Responsive: Base implementada.
+[CORREGIDO ✅] - Contenido de Cápsulas: 18 cápsulas.
+2. 🔒 Flujo de Autenticación y Acceso (Crítico)
+[CORREGIDO ✅] - Capa 1: Gate "013" ya no causa bucles.
+[CORREGIDO ✅] - Capa 2: Google Sign-In ya no causa pantallas en blanco.
+[CORREGIDO ✅] - Botón Sign-In: "Entrar / Crear Cuenta".
+[PENDIENTE - ARREGLAR 🔴] - Estilo Botón Sign-In: No es consistente (debe ser cuadrado como los otros).
+[PENDIENTE - ARREGLAR 🔴] - Avatar en Header: No se muestra correctamente.
+[PENDIENTE ⚪] - Nombre App en OAuth: Configuración externa en Google Cloud Console.
+3. 📖 Experiencia de Usuario (UX) y Navegación
+[PENDIENTE - REVISAR 🟡] - Guía de Uso (5 Pasos): La lógica existe, pero hay que verificarla después de arreglar los bugs.
+[PENDIENTE - ARREGLAR 🔴] - Modal Registro (Inicio Cápsula): No se llama en el momento correcto.
+[PENDIENTE - ARREGLAR 🔴] - Retorno Post-Registro: No funciona correctamente.
+[PENDIENTE - ARREGLAR 🔴] - Sistema de Favoritos: Funcionalidad rota y debe usar Supabase.
+[PENDIENTE - ARREGLAR 🔴] - Layout Navbar: Orden de botones e iconos incorrectos.
+[PENDIENTE - ARREGLAR 🔴] - Franja Blanca (Layout): Sigue apareciendo entre secciones.
+4. 🏆 Gamificación y Sistema de Puntos (Crítico)
+[CRÍTICO - EN PROGRESO 🎯] - PASO ACTUAL: La lógica base está reconstruida, pero la carga/visualización de datos en el dashboard está fallando.
+[CRÍTICO - EN PROGRESO 🎯] - Fuente de Verdad (Supabase): Puntos y Premios funcionan. Insignias y Cápsulas no se están cargando.
+[CRÍTICO - EN PROGRESO 🎯] - Actualización en Tiempo Real: No funciona debido al problema de carga de datos.
+[CORREGIDO ✅] - Lógica de Nivel: El bug de "Nivel 3 con 0 puntos" está resuelto.
+[PENDIENTE ⚪] - Límites (2x Cápsula, 2x Premio): Lógica de negocio no implementada.
+[PENDIENTE ⚪] - Incentivos de Sponsor: Lógica de negocio no implementada.
+5. 🎛️ Panel de Control Unificado (Dashboard de Usuario)
+[CORREGIDO ✅] - Unificación: UnificadoDashboard.tsx es el componente central.
+[CORREGIDO ✅] - Seguridad: Vista pública funciona para usuarios no logueados.
+[PENDIENTE - ARREGLAR 🔴] - Icono Navbar: El icono del dashboard es incorrecto.
+[CRÍTICO - EN PROGRESO 🎯] - Tabs (Resumen, Insignias, Cápsulas): Las secciones "Logros Obtenidos" y "Cápsulas Completas" muestran "2" y "0" incorrectamente.
+[CORREGIDO ✅] - Tabs (Premios, Reclamados): La redención y persistencia de premios funciona.
+[PENDIENTE - ARREGLAR 🔴] - Tab (Perfil - Editar Perfil): El botón no es funcional y carga datos falsos.
+[PENDIENTE ⚪] - Campos (Teléfono, ID): Faltan campos en el modal de perfil.
+[PENDIENTE - ARREGLAR 🔴] - Ajuste UI: El recuadro "Tiempo Total" sigue en el Resumen.
+6. 👑 Backoffice (Admin y Sponsor)
+[PENDIENTE ⚪] - Paneles Admin/Sponsor: UI base existe, pero la lógica de negocio no está implementada.
+7. 🛠️ Proceso de Desarrollo (Mandatorio)
+[CUMPLIDO ✅] - Base de Código Fuente: ZIP 45b8ab4 y sus evoluciones.
+[REQUERIMIENTO] - No Dañar / No Cambiar Diseño.
+[REQUERIMIENTO] - Backups / Control de Versiones.
+[REQUERIMIENTO] - Metodología (Paso a Paso con doble chequeo).
+Mi Petición:
+Por favor, ayúdame a solucionar el problema actual: que las insignias y las cápsulas completadas se muestren correctamente en el dashboard después de iniciar sesión.
+Proporcióname los archivos completos que necesito modificar para arreglar la condición de carrera (race condition) y asegurar que los datos se carguen de manera fiable.
