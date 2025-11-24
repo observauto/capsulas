@@ -17,7 +17,7 @@ export const SponsorStrip = ({ sponsors, variant = "header" }: SponsorStripProps
     <div className={`w-full ${bgColor}`}>
       <div className={`max-w-6xl mx-auto px-4 ${variant === "header" ? "py-2" : "py-3"} flex items-center ${variant === "header" ? "justify-end" : "justify-center"} gap-3 flex-wrap`}>
         <span className={`${textColor} text-sm font-medium`}>
-          {variant === "header" ? "Presentado por" : "Patrocinado por"}
+          {variant === "header" ? "Presentadas por" : "Patrocinado por"}
         </span>
         {sponsors.map((sponsor, idx) => (
           <React.Fragment key={sponsor.name}>
