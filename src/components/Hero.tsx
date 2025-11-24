@@ -15,8 +15,8 @@ export const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
       <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
         Micro-lecciones para agudizar tu percepción del mundo automotor.
       </p>
-      
-      <div className="mt-4 max-w-md mx-auto hidden sm:block">
+
+      <div className="mt-4 max-w-md mx-auto">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
