@@ -61,7 +61,7 @@ export const Navbar: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const { points } = useGamification();
-  const { user, signOut, clearAccessCode, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, signOut, loginAsDev } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -105,10 +105,10 @@ export const Navbar: React.FC = () => {
       toast({ title: "Google Sign-In", description: "Se abrirá la ventana de autenticación de Google" });
     } catch (error) {
       console.error('Error starting Google sign-in:', error);
-      toast({ 
-        title: "Error de autenticación", 
-        description: "No se pudo iniciar sesión con Google", 
-        variant: "destructive" 
+      toast({
+        title: "Error de autenticación",
+        description: "No se pudo iniciar sesión con Google",
+        variant: "destructive"
       });
     }
   };
@@ -191,22 +191,34 @@ export const Navbar: React.FC = () => {
             </div>
           ) : (
             // Usuario no logueado
-            <Button
-              variant="ghost"
-              onClick={handleGoogleLogin}
-              className={textButtonClass}
-              aria-label="Entrar o crear cuenta"
-              title="Entrar o crear cuenta"
-            >
-              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-4 w-4 mr-2" />
-              <span>Entrar / Crear Cuenta</span>
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                onClick={handleGoogleLogin}
+                className={textButtonClass}
+                aria-label="Entrar o crear cuenta"
+                title="Entrar o crear cuenta"
+              >
+                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-4 w-4 mr-2" />
+                <span>Entrar / Crear Cuenta</span>
+              </Button>
+
+              {/* Dev Login Button - Temporary for local testing */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => loginAsDev()}
+              >
+                🛠️ Dev
+              </Button>
+            </>
           )}
 
           {/* Botones de funcionalidades */}
           <div className="inline-flex items-center gap-2 border-l border-border/40 pl-3 dark:border-white/10">
             <PointsPill points={points} notifications={pending} />
-            
+
             <Button
               variant="ghost"
               onClick={toggleOnlyFavorites}
@@ -367,16 +379,30 @@ export const Navbar: React.FC = () => {
                   </>
                 ) : (
                   // Usuario no logueado - mostrar botón de login
-                  <SheetClose asChild>
-                    <Button
-                      variant="outline"
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white px-4 text-base font-medium text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:text-blue-400 dark:focus-visible:ring-offset-slate-950"
-                      onClick={handleGoogleLogin}
-                    >
-                      <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-5 w-5" />
-                      <span>Entrar / Crear Cuenta</span>
-                    </Button>
-                  </SheetClose>
+                  <>
+                    <SheetClose asChild>
+                      <Button
+                        variant="outline"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white px-4 text-base font-medium text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:text-blue-400 dark:focus-visible:ring-offset-slate-950"
+                        onClick={handleGoogleLogin}
+                      >
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-5 w-5" />
+                        <span>Entrar / Crear Cuenta</span>
+                      </Button>
+                    </SheetClose>
+
+                    {/* Dev Login Button - Mobile */}
+                    <SheetClose asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground border border-dashed border-gray-300"
+                        onClick={() => loginAsDev()}
+                      >
+                        🛠️ Modo Dev (Test Local)
+                      </Button>
+                    </SheetClose>
+                  </>
                 )}
 
                 <div className="inline-flex items-center gap-2">
@@ -430,7 +456,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mostrar guía de uso si está activada */}
       <CapsuleGuideModal open={showGuide} onOpenChange={setShowGuide} />
-    </header>
+    </header >
   );
 };
 

@@ -168,7 +168,7 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
   try {
     const completedCapsules = readUserScopedJSON<string[]>(COMPLETED_CAPSULES_KEY, userId, COMPLETED_CAPSULES_KEY) || [];
     const userCapsules: CapsuleProgress[] = [];
-    
+
     completedCapsules.forEach((capsuleSlug: string, index: number) => {
       // Mapeo de slugs a nombres reales de cápsulas
       const capsuleMap: { [key: string]: { name: string; section: string } } = {
@@ -182,7 +182,7 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
         'neumaticos': { name: 'Neumáticos', section: 'Inspección y rotación' },
         'frenos': { name: 'Frenos', section: 'Pastillas y discos' }
       };
-      
+
       const capsuleInfo = capsuleMap[capsuleSlug];
       if (capsuleInfo) {
         userCapsules.push({
@@ -196,7 +196,7 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
         });
       }
     });
-    
+
     return userCapsules;
   } catch (error) {
     console.error('Error loading user capsules:', error);
@@ -231,7 +231,7 @@ export default function UnificadoDashboard() {
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
   const [validationCode, setValidationCode] = useState("");
-  
+
   // Estados para el perfil
   const [userProfile, setUserProfile] = useState(() => loadUserProfile(activeUserId));
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -342,7 +342,7 @@ export default function UnificadoDashboard() {
     return { points: 2000, name: "Maestro" };
   };
 
-const nextMilestone = getNextMilestone();
+  const nextMilestone = getNextMilestone();
   const progressToNext = ((points % nextMilestone.points) / nextMilestone.points) * 100;
 
   const canRedeem = (prizePoints: number) => points >= prizePoints;
@@ -381,8 +381,8 @@ const nextMilestone = getNextMilestone();
       saveRedeemedPrizes(updatedPrizes, activeUserId);
 
       // Disparar evento para notificar a otros componentes
-      window.dispatchEvent(new CustomEvent('prizes:redeem', { 
-        detail: { prize: newRedeemedPrize, totalCount: updatedPrizes.length } 
+      window.dispatchEvent(new CustomEvent('prizes:redeem', {
+        detail: { prize: newRedeemedPrize, totalCount: updatedPrizes.length }
       }));
 
       // Close modal
@@ -394,7 +394,7 @@ const nextMilestone = getNextMilestone();
         description: `Tu código de validación: ${validationCode}. Guárdalo para reclamar tu premio.`,
         duration: 10000,
       });
-      
+
       // Reset
       setSelectedPrize(null);
       setValidationCode("");
@@ -420,7 +420,7 @@ const nextMilestone = getNextMilestone();
           <h3 className="text-xl font-semibold text-gray-700">{title}</h3>
           <p className="text-gray-600">{description}</p>
           <div className="pt-2">
-            <Button 
+            <Button
               onClick={signInWithGoogle}
               className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white"
             >
@@ -461,7 +461,7 @@ const nextMilestone = getNextMilestone();
             <p className="text-gray-600">
               Accede con tu cuenta para ver tus puntos, insignias, premios y cápsulas en progreso
             </p>
-            <Button 
+            <Button
               onClick={signInWithGoogle}
               className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white hover:from-[#1C3B71]/90 hover:to-[#D70102]/90"
             >
@@ -595,7 +595,7 @@ const nextMilestone = getNextMilestone();
             <p className="text-blue-100">
               Inicia sesión para acceder a tu panel personal y comenzar a acumular puntos
             </p>
-            <Button 
+            <Button
               onClick={signInWithGoogle}
               variant="secondary"
               className="bg-white text-[#1C3B71] hover:bg-blue-50"
@@ -643,7 +643,7 @@ const nextMilestone = getNextMilestone();
 
       {/* Tabs Principales - Solo para usuarios autenticados */}
       <Tabs defaultValue="resumen" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 h-auto md:grid-cols-6">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="premios">Premios</TabsTrigger>
           <TabsTrigger value="insignias">Insignias</TabsTrigger>
@@ -805,9 +805,8 @@ const nextMilestone = getNextMilestone();
               return (
                 <Card
                   key={prize.id}
-                  className={`overflow-hidden transition-all hover:shadow-lg ${
-                    !canRedeemPrize ? "opacity-60" : ""
-                  }`}
+                  className={`overflow-hidden transition-all hover:shadow-lg ${!canRedeemPrize ? "opacity-60" : ""
+                    }`}
                 >
                   <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                     <img
@@ -973,14 +972,14 @@ const nextMilestone = getNextMilestone();
                           <p className="text-sm text-blue-600 font-medium">
                             {prize.prize_points} puntos
                           </p>
-                          <Badge 
+                          <Badge
                             variant={
                               prize.status === 'delivered' ? 'default' :
-                              prize.status === 'pending' ? 'outline' : 'destructive'
+                                prize.status === 'pending' ? 'outline' : 'destructive'
                             }
                           >
                             {prize.status === 'delivered' ? 'Entregado' :
-                             prize.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                              prize.status === 'pending' ? 'Pendiente' : 'Cancelado'}
                           </Badge>
                         </div>
                       </div>
@@ -1026,11 +1025,10 @@ const nextMilestone = getNextMilestone();
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            capsule.completed_at 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-blue-100 text-blue-800'
-                          }`}>
+                            }`}>
                             {capsule.completed_at ? 'Completada' : 'En progreso'}
                           </span>
                         </div>
@@ -1145,10 +1143,10 @@ const nextMilestone = getNextMilestone();
                   )}
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t">
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   className="w-full bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white"
                   onClick={() => setShowEditProfileModal(true)}
                 >
@@ -1173,7 +1171,7 @@ const nextMilestone = getNextMilestone();
               Estás a punto de canjear tu premio
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPrize && (
             <div className="space-y-4 py-4">
               <div className="flex items-start gap-4">

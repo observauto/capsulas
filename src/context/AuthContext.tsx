@@ -13,6 +13,7 @@ interface AuthContextType {
   accessCodeValid: boolean
   validateAccessCode: (code: string) => boolean
   clearAccessCode: () => void
+  loginAsDev: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,14 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('[AUTH] Cargando usuario inicial...')
         const { data: { user: supabaseUser }, error } = await supabase.auth.getUser()
-        
+
         console.log('[AUTH] Usuario obtenido:', {
           hasUser: !!supabaseUser,
           userId: supabaseUser?.id,
           userEmail: supabaseUser?.email,
           error
         })
-        
+
         if (error) {
           console.error('[AUTH] Error obteniendo usuario:', error)
         } else if (supabaseUser) {
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             created_at: supabaseUser.created_at || ''
           }
           setUser(user)
-          
+
           console.log('[AUTH] Usuario establecido, ejecutando sincronización en background...')
           // Sincronizar datos locales a Supabase EN BACKGROUND (sin bloquear)
           handleDataSync(user.id, user.email).catch(error => {
@@ -133,27 +134,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SINCRONIZACIÓN FORZADA - Se ejecuta en background (NO bloquea la UI)
   const handleDataSync = async (userId: string, userEmail: string) => {
     setIsSyncing(true)  // NUEVO: Marcar inicio de sincronización
-    
+
     try {
       console.log('[AUTH] ===== EJECUTANDO SINCRONIZACIÓN EN BACKGROUND =====');
       console.log('[AUTH] User ID:', userId);
       console.log('[AUTH] Email:', userEmail);
-      
+
       // Timeout más corto (10 segundos) para no bloquear
       const syncPromise = fullSync(userId, userEmail);
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Timeout en sincronización (10s)')), 10000)
       );
-      
+
       const result = await Promise.race([syncPromise, timeoutPromise]) as any;
-      
+
       console.log('[AUTH] ===== RESULTADO DE SINCRONIZACIÓN EN BACKGROUND =====');
       console.log('[AUTH] Success:', result.success);
       console.log('[AUTH] Puntos migrados:', result.pointsMigrated);
       console.log('[AUTH] Badges migrados:', result.badgesMigrated);
       console.log('[AUTH] Puntos finales:', result.finalPoints);
       console.log('[AUTH] Error:', result.error);
-      
+
       if (result.success) {
         // Mostrar toast solo si hay datos para migrar
         if (result.pointsMigrated > 0 || result.badgesMigrated > 0) {
@@ -181,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Check if there's a return URL saved in sessionStorage
       const returnToUrl = sessionStorage.getItem('returnToCapsule');
-      
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -197,6 +198,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Google Sign-In error:', error)
       throw error
     }
+  }
+
+  const loginAsDev = async () => {
+    const devUser: User = {
+      id: 'dev-user-id',
+      email: 'dev@observauto.com',
+      name: 'Desarrollador',
+      avatar_url: null,
+      created_at: new Date().toISOString()
+    }
+    setUser(devUser)
+    localStorage.setItem('access_code_valid', 'true')
+    setAccessCodeValid(true)
+    toast({
+      title: "Modo Desarrollador Activado",
+      description: "Has iniciado sesión como usuario de prueba.",
+    })
   }
 
   const signOut = async () => {
@@ -233,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       isSyncing,  // NUEVO: Exponer flag
       signInWithGoogle,
+      loginAsDev,
       signOut,
       accessCodeValid,
       validateAccessCode,

@@ -6,7 +6,7 @@ type Props = {
 };
 
 export default function AccessGate({ children }: Props) {
-  const { loading, accessCodeValid, validateAccessCode, user } = useAuth();
+  const { loading, accessCodeValid, validateAccessCode, user, loginAsDev } = useAuth();
   const [code, setCode] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showAccessGate, setShowAccessGate] = React.useState(true);
@@ -38,7 +38,7 @@ export default function AccessGate({ children }: Props) {
   const handleCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     const isValid = validateAccessCode(code.trim());
     if (isValid) {
       // No recargar, solo activar el acceso
@@ -60,7 +60,7 @@ export default function AccessGate({ children }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          
+
           <h1 className="text-2xl font-bold text-gray-900 mb-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-300">
             Cápsulas Observauto
           </h1>
@@ -89,9 +89,9 @@ export default function AccessGate({ children }: Props) {
                 maxLength={3}
               />
             </div>
-            
-            <button 
-              type="submit" 
+
+            <button
+              type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               disabled={isSubmitting || code.length === 0}
             >
@@ -104,6 +104,17 @@ export default function AccessGate({ children }: Props) {
                 'Acceder a la Plataforma'
               )}
             </button>
+
+            {/* Dev Mode Button - Only for local testing */}
+            <div className="pt-4 border-t mt-4">
+              <button
+                type="button"
+                className="w-full text-xs text-gray-500 border border-dashed border-gray-300 py-2 rounded-xl hover:bg-gray-50 transition-all"
+                onClick={() => loginAsDev()}
+              >
+                🛠️ Modo Desarrollador (Test Local)
+              </button>
+            </div>
           </form>
         </div>
 
