@@ -104,17 +104,6 @@ export default function AccessGate({ children }: Props) {
                 'Acceder a la Plataforma'
               )}
             </button>
-
-            {/* Dev Mode Button - Only for local testing */}
-            <div className="pt-4 border-t mt-4">
-              <button
-                type="button"
-                className="w-full text-xs text-gray-500 border border-dashed border-gray-300 py-2 rounded-xl hover:bg-gray-50 transition-all"
-                onClick={() => loginAsDev()}
-              >
-                🛠️ Modo Desarrollador (Test Local)
-              </button>
-            </div>
           </form>
         </div>
 
