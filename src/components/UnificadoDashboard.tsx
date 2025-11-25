@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import EditProfileModal from './EditProfileModal';
 import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
+import { listFullCapsules, getCapsuleProgress } from '@/lib/capsulesRepo';
+// import { getCapsuleProgressLite } from '@/lib/capsuleProgress';
 
 // Datos base - SIN PROGRESO FALSO
 const BASE_USER_PROFILE = {
@@ -164,40 +166,62 @@ const PRIZES = [
   },
 ];
 
-// Función para cargar cápsulas completadas desde localStorage
+// Función para cargar cápsulas (completadas y en progreso)
 const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
   try {
-    const completedCapsules = readUserScopedJSON<string[]>(COMPLETED_CAPSULES_KEY, userId, COMPLETED_CAPSULES_KEY) || [];
     const userCapsules: CapsuleProgress[] = [];
+    const allCapsules = listFullCapsules();
 
-    completedCapsules.forEach((capsuleSlug: string, index: number) => {
-      // Mapeo de slugs a nombres reales de cápsulas
-      const capsuleMap: { [key: string]: { name: string; section: string } } = {
-        'camion-flota-empresarial': { name: 'Camión Flota Empresarial', section: 'Gestión de Flotas' },
-        'gas-natural-vehicular': { name: 'Gas Natural Vehicular', section: 'GNV Systems' },
-        'identifica-modelos-automotrices': { name: 'Identifica Modelos Automotrices', section: 'Identificación' },
-        'seguridad-vial-consejos': { name: 'Seguridad Vial Consejos', section: 'Seguridad' },
-        'metodos-financiacion': { name: 'Métodos Financiación', section: 'Financiamiento' },
-        'mantenimiento-basico': { name: 'Mantenimiento Básico', section: 'Cambio de aceite' },
-        'sistemas-electricos': { name: 'Sistemas Eléctricos', section: 'Batería y alternador' },
-        'neumaticos': { name: 'Neumáticos', section: 'Inspección y rotación' },
-        'frenos': { name: 'Frenos', section: 'Pastillas y discos' }
-      };
+    // Cargar lista de completadas para referencia rápida (legacy/backup)
+    const completedRaw = localStorage.getItem('completed_capsules');
+    let completedList: Array<{ slug: string, completedAt: string }> = [];
+    if (completedRaw) {
+      try { completedList = JSON.parse(completedRaw); } catch { }
+    }
 
-      const capsuleInfo = capsuleMap[capsuleSlug];
-      if (capsuleInfo) {
+    allCapsules.forEach((capsule, index) => {
+      // 1. Obtener progreso del repositorio central (mismo que usa WizardMode)
+      const progress = getCapsuleProgress(capsule.slug);
+      console.log(`[DASHBOARD] Checking ${capsule.slug}:`, progress);
+
+      // 2. Determinar si está completada
+      // Prioridad: 1. Repo (completed=true), 2. Lista legacy, 3. Quiz pasado
+      let isCompleted = progress.completed || !!completedList.find(c => c.slug === capsule.slug) || progress.quizCompleted;
+
+      // Determinar fecha de completado
+      let completedAt = progress.completedAt
+        ? new Date(progress.completedAt).toISOString()
+        : (completedList.find(c => c.slug === capsule.slug)?.completedAt);
+
+      // 3. Determinar si tiene progreso parcial
+      const hasProgress =
+        progress.completedSections.length > 0 ||
+        progress.quizCompleted ||
+        isCompleted;
+
+      if (hasProgress) {
+        // Calcular porcentaje real
+        let percentage = 100;
+        if (!isCompleted) {
+          const totalSteps = (capsule.sections?.length || 0) + (capsule.quiz ? 1 : 0);
+          const completedSteps = progress.completedSections.length + (progress.quizCompleted ? 1 : 0);
+          percentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+          if (percentage > 99 && !isCompleted) percentage = 99;
+        }
+
         userCapsules.push({
           id: `user-capsule-${index}`,
-          capsule_name: capsuleInfo.name,
-          section_name: capsuleInfo.section,
-          progress_percentage: 100,
-          completed_at: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString(),
-          last_accessed: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString(),
-          time_spent_minutes: 45 + (index * 10) // Tiempo variable basado en el orden
+          capsule_name: capsule.title,
+          section_name: capsule.sections?.[0]?.title || 'General',
+          progress_percentage: percentage,
+          completed_at: completedAt,
+          last_accessed: new Date().toISOString(), // Repo no guarda lastAccess, usamos current
+          time_spent_minutes: 15 + (progress.completedSections.length * 5)
         });
       }
     });
 
+    console.log(`[DASHBOARD] Cargadas ${userCapsules.length} cápsulas (completadas o en progreso)`);
     return userCapsules;
   } catch (error) {
     console.error('Error loading user capsules:', error);
@@ -230,6 +254,24 @@ export default function UnificadoDashboard() {
   const { points, badges, subtractPoints } = useGamification();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'resumen');
+
+  // Sincronizar tab con URL cuando cambia el parámetro
+  React.useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  // Actualizar URL cuando cambia el tab manual
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+    // Scroll to top of the page for better UX
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
   const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes(activeUserId));
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
@@ -304,8 +346,11 @@ export default function UnificadoDashboard() {
   }, [badges]);
 
   // Función para actualizar el perfil del usuario
-  const handleProfileUpdate = (updatedProfile: typeof userProfile) => {
-    setUserProfile(updatedProfile);
+  const handleProfileUpdate = (updatedProfile: any) => {
+    setUserProfile(prev => ({
+      ...prev,
+      ...updatedProfile
+    }));
     writeUserScopedJSON(USER_PROFILE_KEY, updatedProfile, activeUserId);
   };
 
@@ -645,7 +690,7 @@ export default function UnificadoDashboard() {
       </div>
 
       {/* Tabs Principales - Solo para usuarios autenticados */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 h-auto md:grid-cols-6">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="premios">Premios</TabsTrigger>

@@ -134,6 +134,18 @@ export function setCapsuleCompleted(slug: string) {
 }
 
 export function isCapsuleCompleted(slug: string): boolean {
+  // Método 1: Revisar en completed_capsules (más confiable)
+  try {
+    const completedRaw = localStorage.getItem('completed_capsules');
+    if (completedRaw) {
+      const completed = JSON.parse(completedRaw);
+      if (completed.some((c: any) => c.slug === slug)) {
+        return true;
+      }
+    }
+  } catch { }
+
+  // Método 2 (fallback): Revisar progreso individual
   const capsule = getFullCapsuleBySlug(slug);
   if (!capsule) return false;
   const p = getCapsuleProgress(slug);

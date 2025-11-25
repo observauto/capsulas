@@ -1,5 +1,6 @@
-import { LucideIcon, ChevronRight, Bookmark, BookmarkCheck } from "lucide-react";
+import { LucideIcon, ChevronRight, Bookmark, BookmarkCheck, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import React from "react";
 
 interface CapsuleCardProps {
@@ -37,6 +38,12 @@ export const CapsuleCard: React.FC<CapsuleCardProps> = ({
             <CardTitle className="text-base font-semibold text-slate-900 dark:text-foreground leading-snug truncate group-hover:text-primary transition-colors">
               {title}
             </CardTitle>
+            {isCompleted && (
+              <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4 bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
+                Completada
+              </Badge>
+            )}
           </button>
           <button
             onClick={(e) => {
