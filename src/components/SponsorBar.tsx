@@ -6,8 +6,8 @@ export const SponsorBar: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 py-1 flex items-center justify-end gap-2">
         <span className="text-white text-sm font-medium">Presentadas por</span>
         <img
-          src="/BYD-Logo-White-PNG.png"
-          alt="BYD"
+          src="https://www.vardi.com.co/wp-content/themes/vardi/img/logofo.svg"
+          alt="Vardi"
           className="h-4 w-auto opacity-90"
         />
       </div>

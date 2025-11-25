@@ -59,6 +59,18 @@ export const OnlyFavoritesProvider: React.FC<OnlyFavoritesProviderProps> = ({ ch
   const loadFavoritesFromSupabase = async () => {
     if (!user) return;
 
+    // Fallback para modo dev
+    if (user.id === 'dev-user-id') {
+      try {
+        const localFavs = JSON.parse(localStorage.getItem('dev_favorites') || '[]');
+        setFavorites(localFavs);
+      } catch (e) {
+        console.error("Error loading dev favorites:", e);
+        setFavorites([]);
+      }
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -106,6 +118,18 @@ export const OnlyFavoritesProvider: React.FC<OnlyFavoritesProviderProps> = ({ ch
       : [...favorites, capsuleSlug];
 
     setFavorites(newFavorites);
+
+    // Modo Dev: Guardar en localStorage
+    if (user.id === 'dev-user-id') {
+      localStorage.setItem('dev_favorites', JSON.stringify(newFavorites));
+      toast({
+        title: isFav ? "Eliminado de favoritos" : "Guardado en favoritos",
+        description: isFav
+          ? "La cápsula se ha eliminado de tus favoritos"
+          : "La cápsula se ha guardado en tus favoritos",
+      });
+      return;
+    }
 
     try {
       if (isFav) {

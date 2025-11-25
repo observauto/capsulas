@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useGamification } from '@/context/GamificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { AVAILABLE_BADGES } from '@/lib/gamification';
-import { Trophy, Star, Target, Award, Clock, TrendingUp, Gift, CheckCircle2, X, Flame, LogIn, UserX } from 'lucide-react';
+import { Trophy, Star, Target, Award, Clock, TrendingUp, Gift, CheckCircle2, X, Flame, LogIn, UserX, ArrowRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
 import EditProfileModal from './EditProfileModal';
 import { buildUserScopedKey, readUserScopedJSON, writeUserScopedJSON } from '@/lib/user-storage';
 import { listFullCapsules, getCapsuleProgress } from '@/lib/capsulesRepo';
-// import { getCapsuleProgressLite } from '@/lib/capsuleProgress';
+import { useOnlyFavorites } from '@/context/OnlyFavoritesContext';
 
 // Datos base - SIN PROGRESO FALSO
 const BASE_USER_PROFILE = {
@@ -73,6 +73,7 @@ interface UserAchievement {
 
 interface CapsuleProgress {
   id: string;
+  slug: string;
   capsule_name: string;
   section_name: string;
   progress_percentage: number;
@@ -211,6 +212,7 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
 
         userCapsules.push({
           id: `user-capsule-${index}`,
+          slug: capsule.slug,
           capsule_name: capsule.title,
           section_name: capsule.sections?.[0]?.title || 'General',
           progress_percentage: percentage,
@@ -251,15 +253,23 @@ const saveRedeemedPrizes = (prizes: RedeemedPrize[], userId?: string | null): vo
 export default function UnificadoDashboard() {
   const { user, signInWithGoogle } = useAuth();
   const activeUserId = user?.id ?? null;
+  const navigate = useNavigate();
+  const { favorites } = useOnlyFavorites();
   const { points, badges, subtractPoints } = useGamification();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'resumen');
+  const [capsuleFilter, setCapsuleFilter] = useState<'all' | 'in_progress' | 'completed' | 'favorites'>('all');
 
   // Sincronizar tab con URL cuando cambia el parámetro
   React.useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
+    }
+
+    const filterFromUrl = searchParams.get('filter');
+    if (filterFromUrl && ['all', 'in_progress', 'completed', 'favorites'].includes(filterFromUrl)) {
+      setCapsuleFilter(filterFromUrl as 'all' | 'in_progress' | 'completed' | 'favorites');
     }
   }, [searchParams]);
 
@@ -846,7 +856,7 @@ export default function UnificadoDashboard() {
         {/* Tab Premios */}
         <TabsContent value="premios" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {PRIZES.map((prize) => {
+            {PRIZES.sort((a, b) => a.points - b.points).map((prize) => {
               const canRedeemPrize = canRedeem(prize.points);
               const isLowStock = prize.stock <= 5;
 
@@ -1091,56 +1101,115 @@ export default function UnificadoDashboard() {
         <TabsContent value="capsulas" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Progreso de Cápsulas
-              </CardTitle>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Mis Cápsulas
+                </CardTitle>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={capsuleFilter === 'all' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCapsuleFilter('all')}
+                  >
+                    Todas
+                  </Button>
+                  <Button
+                    variant={capsuleFilter === 'in_progress' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCapsuleFilter('in_progress')}
+                    className={capsuleFilter === 'in_progress' ? "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200" : ""}
+                  >
+                    En Progreso
+                  </Button>
+                  <Button
+                    variant={capsuleFilter === 'completed' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCapsuleFilter('completed')}
+                    className={capsuleFilter === 'completed' ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" : ""}
+                  >
+                    Completadas
+                  </Button>
+                  <Button
+                    variant={capsuleFilter === 'favorites' ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCapsuleFilter('favorites')}
+                    className={capsuleFilter === 'favorites' ? "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200" : ""}
+                  >
+                    <Star className="h-3 w-3 mr-1" />
+                    Favoritos
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {userCapsules.length > 0 ? (
-                <div className="space-y-4">
-                  {userCapsules.map((capsule) => (
-                    <div
-                      key={capsule.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
-                          <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                            }`}>
-                            {capsule.completed_at ? 'Completada' : 'En progreso'}
-                          </span>
+              {(() => {
+                const filteredCapsules = userCapsules.filter(capsule => {
+                  if (capsuleFilter === 'favorites') return favorites.includes(capsule.slug);
+                  if (capsuleFilter === 'completed') return capsule.completed_at;
+                  if (capsuleFilter === 'in_progress') return !capsule.completed_at;
+                  return true;
+                });
+
+                if (filteredCapsules.length > 0) {
+                  return (
+                    <div className="space-y-4">
+                      {filteredCapsules.map((capsule) => (
+                        <div
+                          key={capsule.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
+                              <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                {capsule.completed_at ? 'Completada' : 'En progreso'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{capsule.section_name}</p>
+                            <Progress value={capsule.progress_percentage} className="h-2 mb-2" />
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>{capsule.progress_percentage}% completado</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {capsule.time_spent_minutes} min
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-4 shrink-0"
+                            onClick={() => navigate(`/capsulas/${capsule.slug}`)}
+                          >
+                            <span className="hidden sm:inline">Ir a la cápsula</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
+                          </Button>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{capsule.section_name}</p>
-                        <Progress value={capsule.progress_percentage} className="h-2 mb-2" />
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{capsule.progress_percentage}% completado</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {capsule.time_spent_minutes} min
-                          </span>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                    No hay cápsulas en progreso
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Las cápsulas que inicies y completes aparecerán aquí
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Aún no has comenzado ninguna cápsula de aprendizaje
-                  </p>
-                </div>
-              )}
+                  );
+                } else {
+                  return (
+                    <div className="text-center py-12">
+                      <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                        No se encontraron cápsulas
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {capsuleFilter === 'favorites'
+                          ? "No tienes cápsulas marcadas como favoritas"
+                          : capsuleFilter === 'completed'
+                            ? "Aún no has completado ninguna cápsula"
+                            : "No tienes cápsulas en este estado"}
+                      </p>
+                    </div>
+                  );
+                }
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1243,7 +1312,7 @@ export default function UnificadoDashboard() {
 
       {/* Modal de Confirmación de Canje */}
       <Dialog open={showRedeemModal} onOpenChange={setShowRedeemModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] overflow-y-auto p-4 mx-auto rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Gift className="h-6 w-6 text-primary" />

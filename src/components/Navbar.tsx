@@ -224,25 +224,24 @@ export const Navbar: React.FC = () => {
             <PointsPill points={points} notifications={pending} />
 
             {user && (
-              <Button
-                variant="ghost"
-                onClick={toggleOnlyFavorites}
-                aria-label={onlyFavorites ? "Ver todas las cápsulas" : "Mostrar solo favoritas"}
-                className={cn(
-                  textButtonClass,
-                  onlyFavorites
-                    ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
-                    : "hover:text-white",
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  {onlyFavorites ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                  <span>Favoritos</span>
-                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
-                    {favoritesCount}
-                  </span>
-                </div>
-              </Button>
+              <Link to="/backoffice?tab=capsulas&filter=favorites">
+                <Button
+                  variant="ghost"
+                  aria-label="Mostrar solo favoritas"
+                  className={cn(
+                    textButtonClass,
+                    "hover:text-orange-700 hover:bg-orange-50",
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Bookmark className="h-4 w-4" />
+                    <span>Favoritos</span>
+                    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-bold leading-none text-white">
+                      {favoritesCount}
+                    </span>
+                  </div>
+                </Button>
+              </Link>
             )}
 
             <Button
@@ -317,153 +316,177 @@ export const Navbar: React.FC = () => {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="flex w-[310px] flex-col gap-6 sm:w-[340px]"
+              className="flex w-[300px] flex-col gap-0 p-0 sm:w-[340px] border-l border-border/40 bg-white/95 backdrop-blur-xl dark:bg-slate-900/95"
               id="mobile-menu"
             >
-              <div className="mt-10 flex flex-col gap-6">
-                <SheetClose asChild>
-                  <div onClick={closeMobileMenu}>
-                    <PointsPill points={points} notifications={pending} />
-                  </div>
-                </SheetClose>
-
-                {/* Botón de ayuda en móvil */}
-                <Button
-                  variant="ghost"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  onClick={() => setShowGuide(true)}
-                >
-                  <HelpCircle className="h-5 w-5" />
-                  <span>Guía de Uso</span>
-                </Button>
-
-                {user ? (
-                  <>
-                    {/* Enlace al Panel de Control */}
-                    <SheetClose asChild>
-                      <Link to="/backoffice?tab=resumen">
+              <div className="flex flex-col h-full">
+                {/* Header del Menú - Perfil de Usuario */}
+                <div className="p-6 border-b border-border/40 bg-slate-50/50 dark:bg-slate-800/50">
+                  {user ? (
+                    <div className="flex items-center gap-4">
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm dark:border-slate-700"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm dark:border-slate-700 dark:bg-blue-900">
+                          <span className="text-lg font-bold text-blue-600 dark:text-blue-300">
+                            {user.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate dark:text-slate-100">
+                          {user.name}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate dark:text-slate-400">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-slate-600 mb-3 dark:text-slate-400">
+                        Bienvenido a ObservAuto
+                      </p>
+                      <SheetClose asChild>
                         <Button
-                          variant="ghost"
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 px-4 text-base font-medium text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-colors w-full"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                          onClick={handleGoogleLogin}
                         >
-                          <LayoutDashboard className="h-5 w-5" />
-                          <span>Mi Panel</span>
+                          <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-4 w-4 mr-2 brightness-0 invert" />
+                          Iniciar Sesión
                         </Button>
+                      </SheetClose>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cuerpo del Menú - Enlaces */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  <SheetClose asChild>
+                    <div onClick={closeMobileMenu}>
+                      <Link
+                        to="/backoffice?tab=premios"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                          <Trophy className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Mis Puntos</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{points} puntos acumulados</p>
+                        </div>
+                      </Link>
+                    </div>
+                  </SheetClose>
+
+                  {user && (
+                    <SheetClose asChild>
+                      <Link
+                        to="/backoffice?tab=resumen"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
+                        onClick={closeMobileMenu}
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                          <LayoutDashboard className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Mi Panel de Control</span>
                       </Link>
                     </SheetClose>
+                  )}
 
-                    {/* Usuario logueado - mostrar avatar y logout en móvil */}
+                  {user && (
                     <SheetClose asChild>
-                      <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          {user.avatar_url ? (
-                            <img
-                              src={user.avatar_url}
-                              alt={user.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <span className="text-base font-medium text-gray-600">
-                                {user.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
-                          </div>
+                      <Link
+                        to="/backoffice?tab=capsulas&filter=favorites"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
+                        onClick={closeMobileMenu}
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                          <Bookmark className="h-4 w-4" />
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleSignOut}
-                          className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                        >
-                          <LogOut className="h-5 w-5" />
-                        </Button>
-                      </div>
+                        <div className="flex-1 flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Mis Favoritos</span>
+                          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-bold leading-none text-white">
+                            {favoritesCount}
+                          </span>
+                        </div>
+                      </Link>
                     </SheetClose>
-                  </>
-                ) : (
-                  // Usuario no logueado - mostrar botón de login
-                  <>
+                  )}
+
+                  <div className="my-2 border-t border-border/40 dark:border-white/10" />
+
+                  <SheetClose asChild>
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800 text-left"
+                      onClick={() => setShowGuide(true)}
+                    >
+                      <HelpCircle className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Guía de Uso</span>
+                    </button>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800 text-left"
+                      onClick={() => { handleShare(); closeMobileMenu(); }}
+                    >
+                      <Share2 className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Compartir</span>
+                    </button>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800 text-left"
+                      onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); closeMobileMenu(); }}
+                    >
+                      {theme === "dark" ? (
+                        <Sun className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                      ) : (
+                        <Moon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                      )}
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {theme === "dark" ? "Modo Claro" : "Modo Oscuro"}
+                      </span>
+                    </button>
+                  </SheetClose>
+                </div>
+
+                {/* Footer del Menú - Logout */}
+                {user && (
+                  <div className="p-4 border-t border-border/40 bg-slate-50/50 dark:bg-slate-800/50">
                     <SheetClose asChild>
                       <Button
-                        variant="outline"
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white px-4 text-base font-medium text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:text-blue-400 dark:focus-visible:ring-offset-slate-950"
-                        onClick={handleGoogleLogin}
+                        variant="ghost"
+                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        onClick={handleSignOut}
                       >
-                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_48dp.png" alt="" className="h-5 w-5" />
-                        <span>Entrar / Crear Cuenta</span>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Cerrar Sesión
                       </Button>
                     </SheetClose>
+                  </div>
+                )}
 
-                    {/* Dev Login Button - Mobile */}
+                {!user && (
+                  <div className="p-4 border-t border-border/40 bg-slate-50/50 dark:bg-slate-800/50">
                     <SheetClose asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-xs text-muted-foreground border border-dashed border-gray-300"
+                        className="w-full text-xs text-muted-foreground"
                         onClick={() => loginAsDev()}
                       >
                         🛠️ Modo Dev (Test Local)
                       </Button>
                     </SheetClose>
-                  </>
+                  </div>
                 )}
-
-                <div className="inline-flex items-center gap-2">
-                  {user && (
-                    <SheetClose asChild>
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          toggleOnlyFavorites();
-                          closeMobileMenu();
-                          if (window.location.pathname !== '/') {
-                            window.location.href = '/';
-                          }
-                        }}
-                        className={cn(
-                          "inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors",
-                          onlyFavorites
-                            ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
-                            : "hover:text-blue-700"
-                        )}
-                      >
-                        {onlyFavorites ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
-                        <span>Favoritos</span>
-                        <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
-                          {favoritesCount}
-                        </span>
-                      </Button>
-                    </SheetClose>
-                  )}
-                  <SheetClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(iconButtonClass, "h-11 w-11")}
-                      onClick={() => { handleShare(); closeMobileMenu(); }}
-                      aria-label="Compartir"
-                    >
-                      <Share2 className="h-5 w-5" />
-                    </Button>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(iconButtonClass, "h-11 w-11")}
-                      onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); closeMobileMenu(); }}
-                      aria-label="Cambiar tema"
-                      title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                    >
-                      {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    </Button>
-                  </SheetClose>
-                </div>
               </div>
             </SheetContent>
           </Sheet>
