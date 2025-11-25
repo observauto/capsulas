@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -227,6 +228,8 @@ export default function UnificadoDashboard() {
   const { user, signInWithGoogle } = useAuth();
   const activeUserId = user?.id ?? null;
   const { points, badges, subtractPoints } = useGamification();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'resumen');
   const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes(activeUserId));
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<typeof PRIZES[0] | null>(null);
@@ -642,7 +645,7 @@ export default function UnificadoDashboard() {
       </div>
 
       {/* Tabs Principales - Solo para usuarios autenticados */}
-      <Tabs defaultValue="resumen" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 h-auto md:grid-cols-6">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="premios">Premios</TabsTrigger>
@@ -694,14 +697,14 @@ export default function UnificadoDashboard() {
 
             <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium opacity-90">Tiempo Total</CardTitle>
+                <CardTitle className="text-sm font-medium opacity-90">Premios Obtenidos</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {Math.round(userCapsules.reduce((sum, c) => sum + c.time_spent_minutes, 0) / 60)}h
+                  {redeemedPrizes.length}
                 </div>
                 <p className="text-xs opacity-75 mt-1">
-                  Horas de estudio
+                  Total canjeados
                 </p>
               </CardContent>
             </Card>
@@ -955,9 +958,9 @@ export default function UnificadoDashboard() {
                 Mis Premios Canjeados
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[60vh] overflow-y-auto">
               {redeemedPrizes.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {redeemedPrizes.map((prize) => (
                     <div
                       key={prize.id}
@@ -1026,8 +1029,8 @@ export default function UnificadoDashboard() {
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
                           <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
                             }`}>
                             {capsule.completed_at ? 'Completada' : 'En progreso'}
                           </span>

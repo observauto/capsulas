@@ -27,10 +27,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       // Redirect back to current page after login
       const currentUrl = window.location.href;
       await signInWithGoogle();
-      
+
       // Store the return URL in sessionStorage to redirect after login
       sessionStorage.setItem('returnToCapsule', currentUrl);
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error('Error signing in:', error);
@@ -46,7 +46,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-gradient-to-br from-background via-background to-primary/5 border-2 border-primary/20 rounded-2xl shadow-2xl">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-background to-primary/5 border-2 border-primary/20 rounded-2xl shadow-2xl">
         <DialogHeader className="text-center pb-2">
           <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-[#1C3B71] to-[#D70102] rounded-full flex items-center justify-center shadow-lg">
             <UserPlus className="h-8 w-8 text-white" />
@@ -59,8 +59,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         <div className="space-y-6 py-2">
           <div className="text-center">
             <p className="text-muted-foreground mb-4">
-              {context === 'capsule' 
-                ? '🌟 Regístrate ahora y gana puntos (+100) mientras lees esta cápsula. ¡Es gratis!' 
+              {context === 'capsule'
+                ? '🌟 Regístrate ahora y gana puntos (+100) mientras lees esta cápsula. ¡Es gratis!'
                 : '¡Estás a punto de completar este quiz! Para ganar puntos y insignias, necesitas registrarte.'
               }
             </p>
@@ -82,7 +82,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   <p className="text-xs text-muted-foreground">+100 puntos base + bonus por dificultad</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <Star className="h-4 w-4 text-white" />
@@ -92,7 +92,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   <p className="text-xs text-muted-foreground">Logros únicos por completar cápsulas</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <Gift className="h-4 w-4 text-white" />
@@ -123,7 +123,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
           {/* Botones de acción */}
           <div className="space-y-3 pt-2">
-            <Button 
+            <Button
               onClick={handleRegister}
               className="w-full bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
             >
@@ -131,8 +131,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
               Registrarse Ahora
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
-            
-            <Button 
+
+            <Button
               onClick={handleContinue}
               variant="outline"
               className="w-full border-2 border-primary/20 hover:bg-primary/5 font-medium py-3 rounded-xl transition-all"
@@ -144,9 +144,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
           <div className="text-center pt-2 border-t border-border/30">
             <p className="text-xs text-muted-foreground">
-              ¿Ya tienes cuenta? 
-              <Button 
-                variant="link" 
+              ¿Ya tienes cuenta?
+              <Button
+                variant="link"
                 className="p-0 h-auto text-primary font-semibold ml-1"
                 onClick={() => navigate('/gamificacion')}
               >
