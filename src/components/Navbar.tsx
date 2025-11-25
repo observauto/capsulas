@@ -30,7 +30,7 @@ type PointsPillProps = {
 
 const PointsPill: React.FC<PointsPillProps> = ({ points, notifications }) => (
   <Link
-    to="/backoffice?tab=premios"
+    to="/gamificacion"
     aria-label="Ver premios y gamificación"
     className="group inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
   >
@@ -116,7 +116,6 @@ export const Navbar: React.FC = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      clearAccessCode();
       toast({ title: "Sesión cerrada", description: "Has cerrado sesión exitosamente" });
       window.location.reload();
     } catch (error) {
@@ -178,7 +177,7 @@ export const Navbar: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                 </div>
               </div>
-              <Link to="/backoffice">
+              <Link to="/backoffice?tab=resumen">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -219,25 +218,27 @@ export const Navbar: React.FC = () => {
           <div className="inline-flex items-center gap-2 border-l border-border/40 pl-3 dark:border-white/10">
             <PointsPill points={points} notifications={pending} />
 
-            <Button
-              variant="ghost"
-              onClick={toggleOnlyFavorites}
-              aria-label={onlyFavorites ? "Ver todas las cápsulas" : "Mostrar solo favoritas"}
-              className={cn(
-                textButtonClass,
-                onlyFavorites
-                  ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
-                  : "hover:text-white",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {onlyFavorites ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                <span>Favoritos</span>
-                <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
-                  {favoritesCount}
-                </span>
-              </div>
-            </Button>
+            {user && (
+              <Button
+                variant="ghost"
+                onClick={toggleOnlyFavorites}
+                aria-label={onlyFavorites ? "Ver todas las cápsulas" : "Mostrar solo favoritas"}
+                className={cn(
+                  textButtonClass,
+                  onlyFavorites
+                    ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
+                    : "hover:text-white",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {onlyFavorites ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                  <span>Favoritos</span>
+                  <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
+                    {favoritesCount}
+                  </span>
+                </div>
+              </Button>
+            )}
 
             <Button
               variant="ghost"

@@ -688,23 +688,23 @@ export default function UnificadoDashboard() {
                 <CardTitle className="text-sm font-medium opacity-90">Premios Canjeados</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{redeemedPrizes.length}</div>
+                <div className="text-2xl font-bold">{redeemedPrizes.filter(p => p.status === 'pending').length}</div>
                 <p className="text-xs opacity-75 mt-1">
-                  Total canjeados
+                  Pendientes de entrega
                 </p>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium opacity-90">Premios Obtenidos</CardTitle>
+                <CardTitle className="text-sm font-medium opacity-90">Premios Reclamados</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {redeemedPrizes.length}
+                  {redeemedPrizes.filter(p => p.status === 'delivered').length}
                 </div>
                 <p className="text-xs opacity-75 mt-1">
-                  Total canjeados
+                  Ya entregados
                 </p>
               </CardContent>
             </Card>
@@ -950,45 +950,37 @@ export default function UnificadoDashboard() {
         </TabsContent>
 
         {/* Tab Reclamados */}
-        <TabsContent value="reclamados" className="space-y-6">
+        <TabsContent value="reclamados" className="space-y-4">
+          {/* Premios Canjeados (Pending) */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5" />
-                Mis Premios Canjeados
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Gift className="h-5 w-5" />
+                Premios Canjeados (Pendientes de Entrega)
               </CardTitle>
             </CardHeader>
-            <CardContent className="max-h-[60vh] overflow-y-auto">
-              {redeemedPrizes.length > 0 ? (
-                <div className="space-y-3">
-                  {redeemedPrizes.map((prize) => (
+            <CardContent className="max-h-[40vh] overflow-y-auto">
+              {redeemedPrizes.filter(p => p.status === 'pending').length > 0 ? (
+                <div className="space-y-2">
+                  {redeemedPrizes.filter(p => p.status === 'pending').map((prize) => (
                     <div
                       key={prize.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50 hover:shadow-md transition-shadow"
                     >
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{prize.prize_name}</h4>
-                        <div className="flex items-center gap-4 mt-2">
-                          <p className="text-sm text-gray-600">
-                            Canjeado: {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}
+                        <h4 className="font-medium text-gray-900 text-sm">{prize.prize_name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-gray-600">
+                            {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}
                           </p>
-                          <p className="text-sm text-blue-600 font-medium">
-                            {prize.prize_points} puntos
+                          <p className="text-xs text-blue-600 font-medium">
+                            {prize.prize_points} pts
                           </p>
-                          <Badge
-                            variant={
-                              prize.status === 'delivered' ? 'default' :
-                                prize.status === 'pending' ? 'outline' : 'destructive'
-                            }
-                          >
-                            {prize.status === 'delivered' ? 'Entregado' :
-                              prize.status === 'pending' ? 'Pendiente' : 'Cancelado'}
-                          </Badge>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-500">Código:</p>
-                        <p className="text-lg font-mono font-bold text-blue-600">
+                        <p className="text-xs text-gray-500">Código:</p>
+                        <p className="text-sm font-mono font-bold text-blue-600">
                           {prize.validation_code}
                         </p>
                       </div>
@@ -996,12 +988,54 @@ export default function UnificadoDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No has canjeado ningún premio aún</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    ¡Explora los premios disponibles y canjea tus primeros puntos!
-                  </p>
+                <div className="text-center py-6">
+                  <Gift className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">No tienes premios canjeados pendientes</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Premios Reclamados (Delivered) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CheckCircle2 className="h-5 w-5" />
+                Premios Reclamados (Entregados)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-[40vh] overflow-y-auto">
+              {redeemedPrizes.filter(p => p.status === 'delivered').length > 0 ? (
+                <div className="space-y-2">
+                  {redeemedPrizes.filter(p => p.status === 'delivered').map((prize) => (
+                    <div
+                      key={prize.id}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-green-50 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 text-sm">{prize.prize_name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-gray-600">
+                            {new Date(prize.redeemed_at).toLocaleDateString('es-ES')}
+                          </p>
+                          <p className="text-xs text-green-600 font-medium">
+                            ✓ Entregado
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Código:</p>
+                        <p className="text-sm font-mono font-bold text-green-600">
+                          {prize.validation_code}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <CheckCircle2 className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">No has reclamado premios aún</p>
                 </div>
               )}
             </CardContent>
