@@ -51,8 +51,8 @@ export default function AccessGate({ children }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-[92%] max-w-md rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl p-8 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-500 slide-in-from-bottom-8">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl p-6 md:p-8 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-500 slide-in-from-bottom-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-in zoom-in-75 duration-700 delay-200">

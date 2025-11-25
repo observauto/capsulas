@@ -94,7 +94,7 @@ export function CapsuleGuideModal({ open, onOpenChange }: CapsuleGuideModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Guía de Uso</DialogTitle>
         </DialogHeader>
@@ -105,9 +105,8 @@ export function CapsuleGuideModal({ open, onOpenChange }: CapsuleGuideModalProps
             {guideSteps.map((_, index) => (
               <div
                 key={index}
-                className={`h-2 rounded-full transition-all ${
-                  index === currentStep ? "w-8 bg-primary" : index < currentStep ? "w-2 bg-primary/50" : "w-2 bg-muted"
-                }`}
+                className={`h-2 rounded-full transition-all ${index === currentStep ? "w-8 bg-primary" : index < currentStep ? "w-2 bg-primary/50" : "w-2 bg-muted"
+                  }`}
               />
             ))}
           </div>

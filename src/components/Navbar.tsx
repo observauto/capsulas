@@ -30,7 +30,7 @@ type PointsPillProps = {
 
 const PointsPill: React.FC<PointsPillProps> = ({ points, notifications }) => (
   <Link
-    to="/gamificacion"
+    to="/backoffice?tab=premios"
     aria-label="Ver premios y gamificación"
     className="group inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
   >
