@@ -7,7 +7,7 @@ interface OnlyFavoritesContextType {
   // Filter functionality
   onlyFavorites: boolean;
   toggleOnlyFavorites: () => void;
-  
+
   // Favorites management
   favorites: string[];
   toggleFavorite: (capsuleSlug: string) => void;
@@ -58,33 +58,25 @@ export const OnlyFavoritesProvider: React.FC<OnlyFavoritesProviderProps> = ({ ch
   // Load favorites from Supabase
   const loadFavoritesFromSupabase = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('user_favorites')
         .select('capsule_slug')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+        .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error loading favorites:', error);
-        // Fallback to empty state on error
-        setFavorites([]);
-        return;
+      if (error) throw error;
+
+      if (data) {
+        setFavorites(data.map(item => item.capsule_slug));
       }
-
-      const favoriteSlugs = data.map(item => item.capsule_slug);
-      setFavorites(favoriteSlugs);
-      console.log('Favorites loaded from Supabase:', favoriteSlugs.length, 'items');
     } catch (error) {
-      console.error('Error loading favorites:', error);
-      // Fallback to empty state on network error
-      setFavorites([]);
+      console.error("Error loading favorites:", error);
       toast({
-        title: "Error de conexión",
-        description: "No se pudieron cargar los favoritos. Verifica tu conexión a internet.",
-        variant: "destructive"
+        title: "Error",
+        description: "No se pudieron cargar tus favoritos",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -96,85 +88,60 @@ export const OnlyFavoritesProvider: React.FC<OnlyFavoritesProviderProps> = ({ ch
     setOnlyFavorites((prev) => !prev);
   };
 
-  // Favorites management functions
+  // Toggle favorite
   const toggleFavorite = async (capsuleSlug: string) => {
-    // Check if user is logged in
     if (!user) {
       toast({
-        title: "Inicio de sesión requerido",
-        description: "Debes iniciar sesión para guardar favoritos.",
-        variant: "destructive"
+        title: "Inicia sesión",
+        description: "Debes iniciar sesión para guardar favoritos",
       });
       return;
     }
 
-    try {
-      const isCurrentlyFavorite = favorites.includes(capsuleSlug);
+    const isFav = favorites.includes(capsuleSlug);
 
-      if (isCurrentlyFavorite) {
-        // Remove from favorites
+    // Optimistic update
+    const newFavorites = isFav
+      ? favorites.filter(slug => slug !== capsuleSlug)
+      : [...favorites, capsuleSlug];
+
+    setFavorites(newFavorites);
+
+    try {
+      if (isFav) {
+        // Remove
         const { error } = await supabase
           .from('user_favorites')
           .delete()
           .eq('user_id', user.id)
           .eq('capsule_slug', capsuleSlug);
 
-        if (error) {
-          console.error('Error removing favorite:', error);
-          toast({
-            title: "Error",
-            description: "No se pudo eliminar el favorito. Intenta nuevamente.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        // Update local state
-        setFavorites(prev => prev.filter(slug => slug !== capsuleSlug));
-        toast({
-          title: "Favorito eliminado",
-          description: "Se ha eliminado de tus favoritos.",
-          variant: "default"
-        });
+        if (error) throw error;
       } else {
-        // Add to favorites
+        // Add
         const { error } = await supabase
           .from('user_favorites')
-          .insert({
-            user_id: user.id,
-            capsule_slug: capsuleSlug
-          });
+          .insert([
+            { user_id: user.id, capsule_slug: capsuleSlug }
+          ]);
 
-        if (error) {
-          console.error('Error adding favorite:', error);
-          // Check if it's a duplicate error (unique constraint)
-          if (error.code === '23505') {
-            // The item is already a favorite, just update local state
-            setFavorites(prev => [...prev, capsuleSlug]);
-          } else {
-            toast({
-              title: "Error",
-              description: "No se pudo guardar el favorito. Intenta nuevamente.",
-              variant: "destructive"
-            });
-          }
-          return;
-        }
-
-        // Update local state
-        setFavorites(prev => [...prev, capsuleSlug]);
-        toast({
-          title: "Favorito guardado",
-          description: "Se ha añadido a tus favoritos.",
-          variant: "default"
-        });
+        if (error) throw error;
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
+
       toast({
-        title: "Error de conexión",
-        description: "No se pudo procesar la acción. Verifica tu conexión a internet.",
-        variant: "destructive"
+        title: isFav ? "Eliminado de favoritos" : "Guardado en favoritos",
+        description: isFav
+          ? "La cápsula se ha eliminado de tus favoritos"
+          : "La cápsula se ha guardado en tus favoritos",
+      });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      // Revert optimistic update
+      setFavorites(favorites);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar, intente de nuevo",
+        variant: "destructive",
       });
     }
   };
@@ -186,8 +153,8 @@ export const OnlyFavoritesProvider: React.FC<OnlyFavoritesProviderProps> = ({ ch
   const favoritesCount = favorites.length;
 
   return (
-    <OnlyFavoritesContext.Provider value={{ 
-      onlyFavorites, 
+    <OnlyFavoritesContext.Provider value={{
+      onlyFavorites,
       toggleOnlyFavorites,
       favorites,
       toggleFavorite,

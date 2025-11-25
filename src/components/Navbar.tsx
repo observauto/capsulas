@@ -30,7 +30,7 @@ type PointsPillProps = {
 
 const PointsPill: React.FC<PointsPillProps> = ({ points, notifications }) => (
   <Link
-    to="/gamificacion"
+    to="/backoffice?tab=premios"
     aria-label="Ver premios y gamificación"
     className="group inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
   >
@@ -68,6 +68,11 @@ export const Navbar: React.FC = () => {
   const pending = 0;
 
   useEffect(() => setMounted(true), []);
+
+  // Helper para cerrar el menú móvil después de una acción
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -317,7 +322,9 @@ export const Navbar: React.FC = () => {
             >
               <div className="mt-10 flex flex-col gap-6">
                 <SheetClose asChild>
-                  <PointsPill points={points} notifications={pending} />
+                  <div onClick={closeMobileMenu}>
+                    <PointsPill points={points} notifications={pending} />
+                  </div>
                 </SheetClose>
 
                 {/* Botón de ayuda en móvil */}
@@ -334,7 +341,7 @@ export const Navbar: React.FC = () => {
                   <>
                     {/* Enlace al Panel de Control */}
                     <SheetClose asChild>
-                      <Link to="/backoffice">
+                      <Link to="/backoffice?tab=resumen">
                         <Button
                           variant="ghost"
                           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 px-4 text-base font-medium text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-colors w-full"
@@ -407,30 +414,38 @@ export const Navbar: React.FC = () => {
                 )}
 
                 <div className="inline-flex items-center gap-2">
-                  <SheetClose asChild>
-                    <Button
-                      variant="ghost"
-                      onClick={toggleOnlyFavorites}
-                      className={cn(
-                        "inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors",
-                        onlyFavorites
-                          ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
-                          : "hover:text-blue-700"
-                      )}
-                    >
-                      {onlyFavorites ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
-                      <span>Favoritos</span>
-                      <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
-                        {favoritesCount}
-                      </span>
-                    </Button>
-                  </SheetClose>
+                  {user && (
+                    <SheetClose asChild>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          toggleOnlyFavorites();
+                          closeMobileMenu();
+                          if (window.location.pathname !== '/') {
+                            window.location.href = '/';
+                          }
+                        }}
+                        className={cn(
+                          "inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors",
+                          onlyFavorites
+                            ? "border-blue-500 bg-blue-600 text-white hover:bg-blue-500 hover:text-white"
+                            : "hover:text-blue-700"
+                        )}
+                      >
+                        {onlyFavorites ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+                        <span>Favoritos</span>
+                        <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white">
+                          {favoritesCount}
+                        </span>
+                      </Button>
+                    </SheetClose>
+                  )}
                   <SheetClose asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       className={cn(iconButtonClass, "h-11 w-11")}
-                      onClick={handleShare}
+                      onClick={() => { handleShare(); closeMobileMenu(); }}
                       aria-label="Compartir"
                     >
                       <Share2 className="h-5 w-5" />
@@ -441,7 +456,7 @@ export const Navbar: React.FC = () => {
                       variant="ghost"
                       size="icon"
                       className={cn(iconButtonClass, "h-11 w-11")}
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); closeMobileMenu(); }}
                       aria-label="Cambiar tema"
                       title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
                     >

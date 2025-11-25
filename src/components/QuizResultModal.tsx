@@ -65,7 +65,8 @@ export const QuizResultModal: React.FC<QuizResultModalProps> = ({
   const handleViewRewards = () => {
     onOpenChange(false);
     setTimeout(() => {
-      navigate("/gamificacion");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate("/backoffice?tab=premios");
     }, 100);
   };
 
@@ -99,7 +100,7 @@ export const QuizResultModal: React.FC<QuizResultModalProps> = ({
           <div className="flex flex-col gap-2">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { onOpenChange(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className="w-full text-sm py-2 rounded-xl font-semibold"
             >
               Revisar respuestas
