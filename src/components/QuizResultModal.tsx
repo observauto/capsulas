@@ -71,96 +71,100 @@ export const QuizResultModal: React.FC<QuizResultModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[95vh] overflow-y-auto rounded-3xl">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl">
+        {/* 1. Felicitaciones */}
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-center text-3xl md:text-4xl font-extrabold">
+          <DialogTitle className="text-center text-2xl font-extrabold">
             {result.passed ? "🎉 ¡Felicitaciones! 🎉" : "😔 Sigue Practicando"}
           </DialogTitle>
-          <DialogDescription className="text-center text-base pt-2">
+          <DialogDescription className="text-center text-sm pt-1">
             {result.passed
               ? "¡Has completado exitosamente esta cápsula!"
-              : "No te desanimes, revisa el contenido e intenta nuevamente."}
+              : "Revisa el contenido e intenta nuevamente."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
-          {/* Score Display */}
-          <div className="text-center py-8 bg-gradient-to-br from-[#1C3B71]/10 via-background to-[#D70102]/10 rounded-3xl border-2 border-primary/20">
-            <div className="text-7xl md:text-8xl font-extrabold mb-4 bg-gradient-to-r from-[#1C3B71] to-[#D70102] bg-clip-text text-transparent">
+        <div className="space-y-3 py-1">
+          {/* 2. Puntaje Porcentaje */}
+          <div className="text-center py-4 bg-gradient-to-br from-[#1C3B71]/10 via-background to-[#D70102]/10 rounded-xl border border-primary/20">
+            <div className="text-5xl font-extrabold mb-1 bg-gradient-to-r from-[#1C3B71] to-[#D70102] bg-clip-text text-transparent">
               {result.scorePercent}%
             </div>
-            <p className="text-lg md:text-xl text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {result.correctCount} de {result.total} correctas
             </p>
           </div>
 
+          {/* 3 y 4. Botones - Revisar respuestas y Ver premios */}
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full text-sm py-2 rounded-xl font-semibold"
+            >
+              Revisar respuestas
+            </Button>
+            {result.passed && (
+              <Button
+                onClick={handleViewRewards}
+                className="w-full text-sm py-2 rounded-xl bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white hover:opacity-90 font-semibold"
+              >
+                <Trophy className="h-4 w-4 mr-2" />
+                Ver premios disponibles
+              </Button>
+            )}
+          </div>
+
+          {/* 5. Puntos E Insignias Obtenidas - UNIFICADO */}
           {result.passed && (
-            <>
-              {/* Points Earned */}
-              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-2 border-green-500/30 rounded-2xl p-6 text-center">
-                <Trophy className="h-12 w-12 mx-auto mb-3 text-green-600" />
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+            <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-3">
+              {/* Título de sección */}
+              <p className="text-center font-bold text-sm mb-2">Puntos e insignias Obtenidas</p>
+
+              {/* Puntos */}
+              <div className="text-center mb-2">
+                <Trophy className="h-8 w-8 mx-auto mb-1 text-green-600" />
+                <p className="text-lg font-bold text-green-700 dark:text-green-400">
                   +{result.scorePercent + 50} puntos
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-[10px] text-muted-foreground">
                   {result.scorePercent} por calificación + 50 de bonificación
                 </p>
               </div>
 
-              {/* Badges */}
+              {/* Insignias */}
               {result.badgesGranted.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-center font-bold text-xl">Insignias obtenidas:</p>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="border-t border-green-500/20 pt-2">
+                  <div className="flex justify-center gap-2 flex-wrap">
                     {result.badgesGranted.map((badgeCode) => {
                       const badge = getBadge(badgeCode);
                       if (!badge) return null;
                       return (
                         <div
                           key={badgeCode}
-                          className="text-center p-5 bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 rounded-2xl hover:scale-105 transition-transform"
+                          className="text-center p-2 bg-white/50 dark:bg-slate-800/50 border border-primary/20 rounded-lg"
                           title={badge.description}
                         >
-                          <div className="text-5xl mb-3">{badge.icon}</div>
-                          <p className="text-base font-semibold">{badge.name}</p>
+                          <div className="text-2xl">{badge.icon}</div>
+                          <p className="text-[10px] font-semibold mt-0.5">{badge.name}</p>
                         </div>
                       );
                     })}
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
+          {/* Mensaje de no aprobado */}
           {!result.passed && (
-            <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-500/30 rounded-2xl p-6 text-center">
-              <p className="text-lg font-medium">
-                Necesitas al menos 70% para aprobar. ¡Revisa el contenido e intenta de nuevo!
+            <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-xl p-3 text-center">
+              <p className="text-xs font-medium">
+                Necesitas al menos 70% para aprobar. ¡Intenta de nuevo!
               </p>
             </div>
           )}
         </div>
-
-        <DialogFooter className="flex-col gap-3 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            size="lg"
-            className="w-full text-lg py-7 rounded-2xl font-semibold"
-          >
-            Revisar respuestas
-          </Button>
-          {result.passed && (
-            <Button
-              onClick={handleViewRewards}
-              size="lg"
-              className="w-full text-lg py-7 rounded-2xl bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white hover:opacity-90 font-semibold"
-            >
-              <Trophy className="h-6 w-6 mr-2" />
-              Ver premios disponibles
-            </Button>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

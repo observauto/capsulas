@@ -56,103 +56,52 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        <div className="space-y-3 py-1">
           <div className="text-center">
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm font-semibold text-muted-foreground">
               {context === 'capsule'
-                ? '🌟 Regístrate ahora y gana puntos (+100) mientras lees esta cápsula. ¡Es gratis!'
-                : '¡Estás a punto de completar este quiz! Para ganar puntos y insignias, necesitas registrarte.'
-              }
+                ? '🌟 ¡Regístrate gratis y gana +100 puntos!'
+                : '¡Regístrate para ganar puntos e insignias!'}
             </p>
           </div>
 
-          {/* Beneficios destacados */}
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
-            <h3 className="font-semibold text-primary mb-3 flex items-center gap-2">
-              <Gift className="h-5 w-5" />
-              ¿Qué obtienes al registrarte?
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#FFD700] to-[#FFA500] rounded-full flex items-center justify-center flex-shrink-0">
-                  <Trophy className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Gana puntos por cada cápsula</p>
-                  <p className="text-xs text-muted-foreground">+100 puntos base + bonus por dificultad</p>
-                </div>
+          {/* Beneficios ultra-compactos */}
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-2.5 border border-primary/20">
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Trophy className="h-3 w-3 text-yellow-600 flex-shrink-0" />
+                <span>Puntos por cada cápsula</span>
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Star className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Colecciona insignias exclusivas</p>
-                  <p className="text-xs text-muted-foreground">Logros únicos por completar cápsulas</p>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <Star className="h-3 w-3 text-purple-600 flex-shrink-0" />
+                <span>Insignias exclusivas</span>
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Gift className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Acceso a contenido premium</p>
-                  <p className="text-xs text-muted-foreground">Capasulas exclusivas para miembros</p>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <Gift className="h-3 w-3 text-green-600 flex-shrink-0" />
+                <span>Premios canjeables</span>
               </div>
-            </div>
-          </div>
-
-          {/* Badges de ejemplo */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-2">Ejemplos de insignias que puedes ganar:</p>
-            <div className="flex justify-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="bg-gradient-to-r from-[#1C3B71]/10 to-[#1C3B71]/5 text-[#1C3B71] border-[#1C3B71]/20">
-                🏆 Experto en Flotas
-              </Badge>
-              <Badge variant="secondary" className="bg-gradient-to-r from-[#D70102]/10 to-[#D70102]/5 text-[#D70102] border-[#D70102]/20">
-                ⚡ Pro GNV
-              </Badge>
-              <Badge variant="secondary" className="bg-gradient-to-r from-green-500/10 to-green-500/5 text-green-600 border-green-500/20">
-                🛡️ Seguridad Vial
-              </Badge>
             </div>
           </div>
 
           {/* Botones de acción */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2 pt-1">
             <Button
               onClick={handleRegister}
-              className="w-full bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
+              className="w-full bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white font-semibold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
             >
-              <UserPlus className="h-5 w-5 mr-2" />
+              <UserPlus className="h-4 w-4 mr-2" />
               Registrarse Ahora
-              <ArrowRight className="h-5 w-5 ml-2" />
+              <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
 
             <Button
               onClick={handleContinue}
               variant="outline"
-              className="w-full border-2 border-primary/20 hover:bg-primary/5 font-medium py-3 rounded-xl transition-all"
+              className="w-full border-2 border-primary/20 hover:bg-primary/5 font-medium py-2 rounded-xl transition-all text-sm"
             >
               Continuar sin Registro
-              <span className="text-sm text-muted-foreground ml-2">(No ganarás puntos)</span>
+              <span className="text-xs text-muted-foreground ml-1.5">(No ganarás puntos)</span>
             </Button>
-          </div>
-
-          <div className="text-center pt-2 border-t border-border/30">
-            <p className="text-xs text-muted-foreground">
-              ¿Ya tienes cuenta?
-              <Button
-                variant="link"
-                className="p-0 h-auto text-primary font-semibold ml-1"
-                onClick={() => navigate('/gamificacion')}
-              >
-                Inicia sesión aquí
-              </Button>
-            </p>
           </div>
         </div>
       </DialogContent>
