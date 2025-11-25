@@ -65,9 +65,9 @@ const SPONSORS: Sponsor[] = [
 
 const IndexPage = () => {
   const navigate = useNavigate();
-  const { 
-    favorites, 
-    toggleFavorite, 
+  const {
+    favorites,
+    toggleFavorite,
     isFavorite,
     onlyFavorites,
     toggleOnlyFavorites
@@ -82,15 +82,10 @@ const IndexPage = () => {
   // 🎮 Usar fullCapsules para contenido completo
   const fullCapsules = listFullCapsules();
 
-  // Filter capsules based on search query and favorites filter
+  // Filter capsules based on search query only (favorites filter is only in Dashboard)
   const filteredCapsules = useMemo(() => {
     let filtered = fullCapsules;
-    
-    // Apply favorites filter if enabled
-    if (onlyFavorites) {
-      filtered = filtered.filter(capsule => isFavorite(capsule.slug));
-    }
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -100,7 +95,7 @@ const IndexPage = () => {
         capsule.slug.toLowerCase().includes(query)
       );
     }
-    
+
     return filtered;
   }, [fullCapsules, searchQuery, onlyFavorites, isFavorite]);
 
@@ -115,9 +110,9 @@ const IndexPage = () => {
 
   // Create grid items with ads interspersed
   const gridItems = useMemo(() => {
-    const items: Array<{ 
-      type: "capsule" | "ad"; 
-      data?: FullCapsule; 
+    const items: Array<{
+      type: "capsule" | "ad";
+      data?: FullCapsule;
       id: string;
     }> = [];
 
@@ -144,7 +139,7 @@ const IndexPage = () => {
   return (
     <div className="min-h-screen hero-bg">
       <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-      
+
       <main className="max-w-6xl mx-auto px-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {gridItems.map((item) => {
           if (item.type === "ad") {
@@ -154,10 +149,10 @@ const IndexPage = () => {
               </div>
             );
           }
-          
+
           const capsule = item.data!;
           const IconComponent = SLUG_TO_ICON[capsule.slug] || BookOpenCheck;
-          
+
           return (
             <CapsuleCard
               key={capsule.slug}
@@ -179,7 +174,7 @@ const IndexPage = () => {
       </div>
 
       <Footer lastLoadTimestamp={loadTimestamp} />
-      
+
       <Toaster />
     </div>
   );
