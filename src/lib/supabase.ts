@@ -11,6 +11,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: 'implicit', // CAMBIADO: Usar flow más simple para evitar loops
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'supabase.auth.token'
+  },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
   }
 })
 
