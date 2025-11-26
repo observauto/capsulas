@@ -32,7 +32,7 @@ const PointsPill: React.FC<PointsPillProps> = ({ points, notifications }) => (
   <Link
     to="/backoffice?tab=premios"
     aria-label="Ver premios y gamificación"
-    className="group inline-flex h-9 items-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
+    className="group inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
   >
     <Trophy className="h-4 w-4 text-blue-600 transition-colors group-hover:text-white dark:text-blue-400 dark:group-hover:text-white" />
     <span className="transition-colors group-hover:text-white dark:group-hover:text-white">Premios</span>
@@ -221,7 +221,7 @@ export const Navbar: React.FC = () => {
 
           {/* Botones de funcionalidades */}
           <div className="inline-flex items-center gap-2 border-l border-border/40 pl-3 dark:border-white/10">
-            <PointsPill points={points} notifications={pending} />
+            <PointsPill points={user ? points : 0} notifications={pending} />
 
             {user && (
               <Link to="/backoffice?tab=capsulas&filter=favorites">
@@ -308,9 +308,9 @@ export const Navbar: React.FC = () => {
                 <Menu className="h-5 w-5" />
                 <span
                   className="absolute -right-1 -top-1 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow"
-                  aria-label={`Puntos: ${points}`}
+                  aria-label={`Puntos: ${user ? points : 0}`}
                 >
-                  {points}
+                  {user ? points : 0}
                 </span>
               </Button>
             </SheetTrigger>
@@ -377,7 +377,7 @@ export const Navbar: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Mis Puntos</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{points} puntos acumulados</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{user ? points : 0} puntos acumulados</p>
                         </div>
                       </Link>
                     </div>
