@@ -59,7 +59,7 @@ async function getProgressSupabase(slug: string, userId: string): Promise<Extend
       .select('*')
       .eq('user_id', userId)
       .eq('capsule_slug', slug)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
       console.error("Error fetching progress from Supabase:", error);
