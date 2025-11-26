@@ -201,6 +201,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const loginAsDev = async () => {
+    // IMPORTANTE: Migrar TODOS los datos de guest a dev-user-id antes de cambiar el usuario
+    console.log('[AUTH] Iniciando migración de datos de guest a dev-user-id');
+
+    const dataMigrations = [
+      { from: 'capsulas:user:capsuleProgress::guest', to: 'capsulas:user:capsuleProgress::dev-user-id', name: 'Progreso de cápsulas' },
+      { from: 'capsulas:user:favorites::guest', to: 'capsulas:user:favorites::dev-user-id', name: 'Favoritos' },
+      { from: 'gamification:profile::guest', to: 'gamification:profile::dev-user-id', name: 'Perfil de gamificación' },
+      { from: 'capsulas:user:redeemedPrizes::guest', to: 'capsulas:user:redeemedPrizes::dev-user-id', name: 'Premios redimidos' },
+    ];
+
+    dataMigrations.forEach(({ from, to, name }) => {
+      const guestData = localStorage.getItem(from);
+      if (guestData) {
+        console.log(`[AUTH] Migrando ${name}: ${from} → ${to}`);
+        localStorage.setItem(to, guestData);
+        localStorage.removeItem(from);
+      }
+    });
+
     const devUser: User = {
       id: 'dev-user-id',
       email: 'dev@observauto.com',
@@ -211,9 +230,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(devUser)
     localStorage.setItem('access_code_valid', 'true')
     setAccessCodeValid(true)
+
+    // Disparar evento para que los componentes se actualicen
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('gamification:update'));
+
     toast({
       title: "Modo Desarrollador Activado",
-      description: "Has iniciado sesión como usuario de prueba.",
+      description: "Has iniciado sesión como usuario de prueba. Tus datos se han migrado correctamente.",
     })
   }
 

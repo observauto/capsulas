@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { FullCapsule, Section, QuizResult } from "@/types/capsule";
 import { Quiz } from "./Quiz";
-import { markSectionCompleted, getCapsuleProgress } from "@/lib/capsulesRepo";
+import { markSectionCompleted, getCapsuleProgress, submitQuiz } from "@/lib/capsulesRepo";
 import { useGamification } from "@/context/GamificationContext";
 
 interface WizardModeProps {
@@ -29,7 +29,7 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
   // Filter out quiz intro sections to show them separately
   const contentSections = capsule.sections.filter(s => s.type !== 'quizIntro');
   const quizIntroSection = capsule.sections.find(s => s.type === 'quizIntro');
-  
+
   const totalSteps = contentSections.length + (capsule.quiz ? 1 : 0);
   const isLastSection = currentStep === contentSections.length - 1;
   const isQuizStep = currentStep === contentSections.length;
@@ -46,7 +46,7 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
     if (currentSection && !safeCompletedSteps.includes(currentSection.id)) {
       markSectionCompleted(capsule.slug, currentSection.id);
       setCompletedSteps([...safeCompletedSteps, currentSection.id]);
-      
+
       // Award points for completing section
       addPoints(10);
     }
@@ -65,20 +65,24 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
   };
 
   const handleQuizComplete = (result: QuizResult) => {
+    // IMPORTANTE: Guardar el resultado del quiz en capsul esRepo
+    const answers = Array(capsule.quiz?.length || 0).fill(0); // Mock answers, no importa para guardar
+    submitQuiz(capsule.slug, answers); // Esto guardará quizCompleted=true y marcará como completada si tienen todas las secciones
+
     setQuizCompleted(true);
-    
+
     // Award points based on score
     addPoints(result.scorePercent);
-    
+
     // Grant badges
     if (result.badgesGranted.length > 0) {
       grantBadges(result.badgesGranted);
     }
-    
+
     // Grant completion badges
     grantBadge("first_capsule");
     grantBadge("quick_learner");
-    
+
     // Award bonus points for first completion
     addPoints(50);
   };
