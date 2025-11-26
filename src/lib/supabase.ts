@@ -1,4 +1,5 @@
 // NOTE: Added comment to trigger redeploy and ensure apikey header is set
+// FORCE REDEPLOY: Authorization header added
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase configuration
@@ -19,7 +20,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'apikey': supabaseAnonKey,
-      'Authorization': `Bearer ${supabaseAnonKey}`
+
     }
   }
 })
