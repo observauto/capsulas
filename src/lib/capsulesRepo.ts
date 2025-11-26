@@ -154,6 +154,7 @@ export function getCapsuleProgress(slug: string): ExtendedUserProgress {
 }
 
 export function markSectionCompleted(slug: string, sectionId: string) {
+  const capsule = getFullCapsuleBySlug(slug);
   const all = getAllProgressLocal();
   const entry = all[slug] || {
     capsuleSlug: slug,
@@ -163,6 +164,21 @@ export function markSectionCompleted(slug: string, sectionId: string) {
   if (!entry.completedSections.includes(sectionId)) {
     entry.completedSections.push(sectionId);
   }
+
+  // IMPORTANTE: Si todas las secciones están completadas, marcar como completada
+  if (capsule && capsule.sections) {
+    // Excluir secciones de tipo 'quizIntro' porque no son navegables en WizardMode
+    const navigableSections = capsule.sections.filter(s => s.type !== 'quizIntro');
+    const allSectionsDone = navigableSections.every(s =>
+      entry.completedSections.includes(s.id)
+    );
+    if (allSectionsDone && !entry.completed) {
+      entry.completed = true;
+      entry.completedAt = Date.now();
+      console.log(`[CAPSULES_REPO] Cápsula ${slug} marcada como completada (todas las secciones)`);
+    }
+  }
+
   all[slug] = entry;
   saveAllProgressLocal(all);
 
@@ -209,12 +225,19 @@ export function submitQuiz(slug: string, answers: number[]): QuizResult {
   entry.quizCompleted = true;
   entry.quizResult = result;
 
-  const allSectionsDone = capsule.sections.every(s =>
+  // Excluir secciones de tipo 'quizIntro' porque no son navegables en WizardMode
+  const navigableSections = capsule.sections.filter(s => s.type !== 'quizIntro');
+  const allSectionsDone = navigableSections.every(s =>
     entry.completedSections.includes(s.id)
   );
-  if (allSectionsDone) {
+
+  // Marcar como completada si todas las secciones navegables están hechas (sin importar si aprobó el quiz)
+  if (allSectionsDone && !entry.completed) {
     entry.completed = true;
     entry.completedAt = Date.now();
+    console.log(`[CAPSULES_REPO] Cápsula ${slug} marcada como completada (quiz: ${scorePercent}%)`);
+  } else if (!allSectionsDone) {
+    console.warn(`[CAPSULES_REPO] Quiz de ${slug} completado pero faltan secciones: ${entry.completedSections.length}/${navigableSections.length}`);
   }
 
   all[slug] = entry;

@@ -210,6 +210,8 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
           if (percentage > 99 && !isCompleted) percentage = 99;
         }
 
+        console.log(`[DASHBOARD] ${capsule.slug} - isCompleted: ${isCompleted}, completedAt: ${completedAt}, progress.completedAt: ${progress.completedAt}`);
+
         userCapsules.push({
           id: `user-capsule-${index}`,
           slug: capsule.slug,

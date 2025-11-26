@@ -231,8 +231,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('access_code_valid', 'true')
     setAccessCodeValid(true)
 
-    // Forzar recarga de la página para que se apliquen los cambios
-    window.location.reload();
+    // Disparar evento para que los componentes se actualicen
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('gamification:update'));
+
+    toast({
+      title: "Modo Desarrollador Activado",
+      description: "Has iniciado sesión como usuario de prueba. Tus datos se han migrado correctamente.",
+    })
   }
 
   const signOut = async () => {
