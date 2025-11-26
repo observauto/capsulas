@@ -8,7 +8,7 @@ interface HeroProps {
 
 export const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
   return (
-    <section className="relative hero-stripes max-w-6xl mx-auto mt-2 rounded-3xl bg-[#F7F9FF]/90 backdrop-blur border border-border/50 p-8 text-center overflow-hidden">
+    <section className="relative hero-stripes max-w-6xl mx-auto mt-2 rounded-3xl bg-[#F7F9FF]/90 dark:bg-slate-800/50 backdrop-blur border border-border/50 p-8 text-center overflow-hidden">
       <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
         Cápsulas Observauto
       </h1>

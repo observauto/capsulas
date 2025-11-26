@@ -60,6 +60,11 @@ export function writeUserScopedJSON<T>(baseKey: string, value: T, userId?: strin
   try {
     const storageKey = buildUserScopedKey(baseKey, userId);
     window.localStorage.setItem(storageKey, JSON.stringify(value));
+
+    // Dispatch custom event for same-window updates
+    window.dispatchEvent(new CustomEvent('local-storage', {
+      detail: { key: storageKey, value }
+    }));
   } catch (error) {
     console.error("[USER_STORAGE] Error writing JSON:", error);
   }

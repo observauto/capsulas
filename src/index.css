@@ -11,12 +11,17 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Observauto brand colors from palette */
-    --brand-blue: 214 55% 28%; /* #1C3B71 */
-    --brand-blue-light: 211 52% 46%; /* #3A6FB6 */
-    --brand-red: 359 99% 43%; /* #D70102 */
-    --brand-yellow: 48 100% 50%; /* #FFD500 */
-    --brand-magenta: 326 100% 38%; /* #C3007E */
-    
+    --brand-blue: 214 55% 28%;
+    /* #1C3B71 */
+    --brand-blue-light: 211 52% 46%;
+    /* #3A6FB6 */
+    --brand-red: 359 99% 43%;
+    /* #D70102 */
+    --brand-yellow: 48 100% 50%;
+    /* #FFD500 */
+    --brand-magenta: 326 100% 38%;
+    /* #C3007E */
+
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
     --card: 220 100% 98.8%;
@@ -42,10 +47,10 @@ All colors MUST be HSL.
 
     /* Gradients using Observauto colors */
     --gradient-primary: linear-gradient(135deg, hsl(214 55% 28%), hsl(359 99% 43%));
-    --gradient-hero: radial-gradient(900px 520px at 8% -12%, rgba(28,59,113,0.10), transparent 60%),
-                     radial-gradient(900px 520px at 92% -10%, rgba(215,1,2,0.08), transparent 58%),
-                     linear-gradient(180deg, #F4F7FF 0%, #FFFFFF 70%);
-    
+    --gradient-hero: radial-gradient(900px 520px at 8% -12%, rgba(28, 59, 113, 0.10), transparent 60%),
+      radial-gradient(900px 520px at 92% -10%, rgba(215, 1, 2, 0.08), transparent 58%),
+      linear-gradient(180deg, #F4F7FF 0%, #FFFFFF 70%);
+
     /* Shadows */
     --shadow-elegant: 0 10px 30px -10px hsl(214 55% 28% / 0.2);
     --shadow-glow: 0 0 40px hsl(214 55% 28% / 0.15);
@@ -80,14 +85,14 @@ All colors MUST be HSL.
     --border: 217 32% 17%;
     --input: 217 32% 17%;
     --ring: 211 52% 46%;
-    
-    --gradient-hero: radial-gradient(900px 520px at 8% -12%, rgba(28,59,113,0.22), transparent 56%),
-                     radial-gradient(900px 520px at 92% -10%, rgba(215,1,2,0.18), transparent 56%),
-                     linear-gradient(180deg, #0B1220 0%, #0F172A 70%);
-    
+
+    --gradient-hero: radial-gradient(900px 520px at 8% -12%, rgba(28, 59, 113, 0.22), transparent 56%),
+      radial-gradient(900px 520px at 92% -10%, rgba(215, 1, 2, 0.18), transparent 56%),
+      linear-gradient(180deg, #0B1220 0%, #0F172A 70%);
+
     --shadow-elegant: 0 10px 30px -10px hsl(214 55% 28% / 0.4);
     --shadow-glow: 0 0 40px hsl(214 55% 28% / 0.3);
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 211 52% 46%;
@@ -101,8 +106,15 @@ All colors MUST be HSL.
 
 /* Custom animations */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes fadeInUp {
@@ -110,6 +122,7 @@ All colors MUST be HSL.
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -126,24 +139,29 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'ss01', 'ss02', 'cv01', 'cv03';
+  }
 
-    /* Fondo de líneas diagonales, ángulo 114° */
+  /* Fondo de líneas diagonales solo para modo claro */
+  :root:not(.dark) body {
     background-color: #f6f7fa;
     background-image:
-      repeating-linear-gradient(
-        114deg,
+      repeating-linear-gradient(114deg,
         #e8eaf0 0px,
         #e8eaf0 2px,
         transparent 2px,
-        transparent 40px
-      );
+        transparent 40px);
     background-size: 40px 40px;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold tracking-tight;
   }
-  
+
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
@@ -160,8 +178,13 @@ All colors MUST be HSL.
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: repeating-linear-gradient(-75deg, rgba(28,59,113,0.12) 0 1px, transparent 1px 34px),
-                linear-gradient(180deg, rgba(28,59,113,0.06) 0%, rgba(215,1,2,0.06) 100%);
+    background: repeating-linear-gradient(-75deg, rgba(28, 59, 113, 0.12) 0 1px, transparent 1px 34px),
+      linear-gradient(180deg, rgba(28, 59, 113, 0.06) 0%, rgba(215, 1, 2, 0.06) 100%);
+  }
+
+  .dark .hero-stripes::before {
+    background: repeating-linear-gradient(-75deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 34px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
   }
 
   .text-gradient {
@@ -170,7 +193,7 @@ All colors MUST be HSL.
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  
+
   .card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -179,11 +202,11 @@ All colors MUST be HSL.
     transform: translateY(-2px);
     box-shadow: var(--shadow-elegant);
   }
-  
+
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
-  
+
   .animate-fade-in-up {
     animation: fadeInUp 0.6s ease-out forwards;
   }
