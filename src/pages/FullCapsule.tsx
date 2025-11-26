@@ -50,10 +50,10 @@ const FullCapsule = () => {
     dateStyle: "long",
     timeStyle: "short",
   }));
-  
+
   // Estado del modal de registro
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-  
+
   // Favorites - usando el contexto OnlyFavoritesContext
   const { toggleFavorite, isFavorite } = useOnlyFavorites();
 
@@ -63,7 +63,7 @@ const FullCapsule = () => {
       // Verificar si el modal ya fue mostrado para esta cápsula
       const modalShownKey = `registration_modal_shown_${capsule.slug}`;
       const hasShownModal = sessionStorage.getItem(modalShownKey);
-      
+
       if (!hasShownModal) {
         // Pequeño delay para evitar que aparezca inmediatamente al cargar
         const timer = setTimeout(() => {
@@ -145,22 +145,22 @@ const FullCapsule = () => {
     // Puntos base por completar cápsula
     const basePoints = 100; // Puntos base por completar cualquier cápsula
     const difficultyBonus = capsule.difficulty === "advanced" ? 50 :
-                           capsule.difficulty === "intermediate" ? 25 : 0;
+      capsule.difficulty === "intermediate" ? 25 : 0;
     const totalPoints = basePoints + difficultyBonus;
-    
+
     // Agregar puntos
     addPoints(totalPoints);
-    
+
     // Determinar badges a otorgar
     const badgesToGrant: string[] = [];
-    
+
     // Badge por completar primera cápsula
     const completedCapsules =
       readUserScopedJSON<string[]>("completed_capsules", user?.id, "completed_capsules") || [];
     if (completedCapsules.length === 0) {
       badgesToGrant.push('primera_capsula');
     }
-    
+
     // Badge por tipo de cápsula completada
     switch (capsule.slug) {
       case 'camion-flota-empresarial':
@@ -179,23 +179,23 @@ const FullCapsule = () => {
         badgesToGrant.push('financiero');
         break;
     }
-    
+
     // Badge por modo de navegación
     if (capsule.mode === 'wizard') {
       badgesToGrant.push('wizard_complete');
     } else {
       badgesToGrant.push('article_reader');
     }
-    
+
     // Otorgar badges
     if (badgesToGrant.length > 0) {
       grantBadges(badgesToGrant);
     }
-    
+
     // Actualizar cápsulas completadas
     const updatedCompleted = [...completedCapsules, capsule.slug];
     writeUserScopedJSON("completed_capsules", updatedCompleted, user?.id);
-    
+
     // 🎉 Celebración visual
     confetti({
       particleCount: 100,
@@ -203,13 +203,13 @@ const FullCapsule = () => {
       origin: { y: 0.6 },
       colors: ['#1C3B71', '#D70102', '#FFD700']
     });
-    
+
     toast({
       title: `¡Cápsula Completada! 🎉`,
       description: `Has ganado ${totalPoints} puntos y ${badgesToGrant.length} nueva(s) insignia(s).`,
       duration: 5000,
     });
-    
+
     // Navigate back after a short delay
     setTimeout(() => {
       navigate("/");
@@ -239,8 +239,8 @@ const FullCapsule = () => {
   return (
     <div className="min-h-screen hero-bg">
       {/* Hero Section */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6">
+      <div className="max-w-6xl mx-auto px-4 py-4 md:py-6">
+        <div className="mb-4 md:mb-6">
           <Button
             variant="ghost"
             onClick={() => navigate("/")}
@@ -250,43 +250,43 @@ const FullCapsule = () => {
             Volver a cápsulas
           </Button>
 
-          {/* Rediseño compacto y atractivo - Momento 2 */}
+          {/* Rediseño compacto y atractivo - Optimizado para móvil */}
           <div className="bg-gradient-to-br from-card/95 via-card/90 to-primary/5 backdrop-blur-lg border-2 border-primary/20 rounded-2xl overflow-hidden shadow-lg">
             {/* Header compacto con título y acciones */}
-            <div className="p-4 md:p-6 pb-3 md:pb-4">
-              <div className="flex items-start justify-between gap-3">
+            <div className="p-3 md:p-5 pb-2 md:pb-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+                  <div className="flex items-center gap-2 mb-1.5 fle x-wrap">
+                    <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight">
                       {capsule.title}
                     </h1>
                     {isCompleted && (
-                      <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                      <Badge variant="secondary" className="flex items-center gap-1 text-xs flex-shrink-0">
                         <CheckCircle2 className="h-3 w-3" />
                         Completada
                       </Badge>
                     )}
                   </div>
-                  
-                  {/* Summary solo en modo article */}
+
+                  {/* Summary - Oculto en móvil, visible en tablet+ solo en modo article */}
                   {capsule.mode === "article" && (
-                    <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                    <p className="hidden md:block text-muted-foreground text-sm leading-relaxed">
                       {capsule.summary}
                     </p>
                   )}
-                  
+
                   {/* Nivel de dificultad compacto */}
                   {capsule.difficulty && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary mt-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary mt-1.5">
                       {capsule.difficulty === "beginner" ? "🌱 Principiante" :
-                       capsule.difficulty === "intermediate" ? "⚡ Intermedio" :
-                       "🏆 Avanzado"}
+                        capsule.difficulty === "intermediate" ? "⚡ Intermedio" :
+                          "🏆 Avanzado"}
                     </span>
                   )}
                 </div>
 
                 {/* Acciones compactas */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -295,7 +295,7 @@ const FullCapsule = () => {
                         toggleFavorite(capsule.slug);
                       }
                     }}
-                    className="h-9 w-9 rounded-full hover:bg-primary/10"
+                    className="h-8 w-8 md:h-9 md:w-9 rounded-full hover:bg-primary/10"
                     title={isFavorite(capsule.slug) ? "Quitar de favoritos" : "Añadir a favoritos"}
                   >
                     {isFavorite(capsule.slug) ? (
@@ -309,7 +309,7 @@ const FullCapsule = () => {
                     variant="ghost"
                     size="icon"
                     onClick={handleShare}
-                    className="h-9 w-9 rounded-full hover:bg-primary/10"
+                    className="h-8 w-8 md:h-9 md:w-9 rounded-full hover:bg-primary/10"
                     title="Compartir cápsula"
                   >
                     <Share2 className="h-4 w-4" />
@@ -319,7 +319,7 @@ const FullCapsule = () => {
             </div>
 
             {/* Sponsor Strip integrado y compacto */}
-            <div className="px-3 pb-3">
+            <div className="px-2 md:px-3 pb-2 md:pb-3">
               <div className="rounded-xl overflow-hidden border border-border/30 bg-background/40">
                 <SponsorStrip sponsors={SPONSORS} variant="capsule" />
               </div>
@@ -328,7 +328,7 @@ const FullCapsule = () => {
         </div>
 
         {/* Mode-specific content */}
-        <div className="bg-card/80 backdrop-blur border border-border/50 rounded-2xl p-6 md:p-8">
+        <div className="bg-card/80 backdrop-blur border border-border/50 rounded-2xl p-4 md:p-6">
           {capsule.mode === "wizard" ? (
             <WizardMode capsule={capsule} onComplete={handleComplete} />
           ) : (
@@ -339,7 +339,7 @@ const FullCapsule = () => {
 
       <Footer lastLoadTimestamp={loadTimestamp} />
       <Toaster />
-      
+
       {/* Modal de registro para usuarios no autenticados */}
       <RegistrationModal
         open={showRegistrationModal}

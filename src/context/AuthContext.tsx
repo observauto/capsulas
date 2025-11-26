@@ -24,10 +24,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false)  // NUEVO
   const [accessCodeValid, setAccessCodeValid] = useState(false)
 
-  // Verificar código de acceso en localStorage
+  // Verificar código de acceso en localStorage con expiración de 30 minutos
   useEffect(() => {
     const savedCode = localStorage.getItem('access_code_valid')
-    setAccessCodeValid(savedCode === 'true')
+    const timestamp = localStorage.getItem('access_code_timestamp')
+
+    if (savedCode === 'true' && timestamp) {
+      const elapsed = Date.now() - parseInt(timestamp)
+      const THIRTY_MINUTES = 30 * 60 * 1000 // 30 minutos en milisegundos
+
+      if (elapsed < THIRTY_MINUTES) {
+        setAccessCodeValid(true)
+      } else {
+        // Código expirado, limpiar
+        localStorage.removeItem('access_code_valid')
+        localStorage.removeItem('access_code_timestamp')
+        setAccessCodeValid(false)
+      }
+    } else {
+      setAccessCodeValid(savedCode === 'true')
+    }
   }, [])
 
   useEffect(() => {
@@ -258,7 +274,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const validateAccessCode = (code: string) => {
     const isValid = code.trim() === '013'
     if (isValid) {
+      // Guardar timestamp actual para expiración de 30 minutos
+      const timestamp = Date.now().toString()
       localStorage.setItem('access_code_valid', 'true')
+      localStorage.setItem('access_code_timestamp', timestamp)
       setAccessCodeValid(true)
     }
     return isValid

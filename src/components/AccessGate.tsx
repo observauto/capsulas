@@ -111,7 +111,7 @@ export default function AccessGate({ children }: Props) {
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-1000">
           <div className="text-center space-y-1">
             <p className="text-sm font-semibold text-blue-800">🔒 Acceso Protegido</p>
-            <p className="text-xs text-blue-600">Sesión válida por 1 hora</p>
+            <p className="text-xs text-blue-600">Sesión válida por 30 minutos</p>
             <p className="text-xs text-blue-500">Puede activarse/desactivarse desde configuración</p>
           </div>
         </div>
