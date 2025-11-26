@@ -1146,12 +1146,33 @@ export default function UnificadoDashboard() {
             </CardHeader>
             <CardContent>
               {(() => {
-                const filteredCapsules = userCapsules.filter(capsule => {
-                  if (capsuleFilter === 'favorites') return favorites.includes(capsule.slug);
-                  if (capsuleFilter === 'completed') return capsule.completed_at;
-                  if (capsuleFilter === 'in_progress') return !capsule.completed_at;
-                  return true;
-                });
+                let filteredCapsules: CapsuleProgress[] = [];
+
+                if (capsuleFilter === 'favorites') {
+                  const allCapsules = listFullCapsules();
+                  filteredCapsules = allCapsules
+                    .filter(c => favorites.includes(c.slug))
+                    .map(c => {
+                      const existing = userCapsules.find(uc => uc.slug === c.slug);
+                      if (existing) return existing;
+                      return {
+                        id: `fav-${c.slug}`,
+                        slug: c.slug,
+                        capsule_name: c.title,
+                        section_name: c.sections?.[0]?.title || 'General',
+                        progress_percentage: 0,
+                        completed_at: undefined,
+                        last_accessed: new Date().toISOString(),
+                        time_spent_minutes: 0
+                      };
+                    });
+                } else {
+                  filteredCapsules = userCapsules.filter(capsule => {
+                    if (capsuleFilter === 'completed') return capsule.completed_at;
+                    if (capsuleFilter === 'in_progress') return !capsule.completed_at;
+                    return true;
+                  });
+                }
 
                 if (filteredCapsules.length > 0) {
                   return (
