@@ -7,6 +7,7 @@ import { QuizResult } from "@/types/capsule";
 import { useGamification } from "@/context/GamificationContext";
 import { recordQuizLite, getCapsuleProgressLite } from "@/lib/capsuleProgress";
 import { Button } from "@/components/ui/button";
+import { UnifiedFooter } from "@/components/UnifiedFooter";
 
 const CapsuleQuiz: React.FC = () => {
   const { slug } = useParams();
@@ -54,40 +55,43 @@ const CapsuleQuiz: React.FC = () => {
   const progress = getCapsuleProgressLite(capsule.slug);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/capsulas/${capsule.slug}`)}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />Volver
-          </Button>
-          <h1 className="text-xl font-semibold tracking-tight">Quiz: {capsule.title}</h1>
+    <div className="min-h-screen flex flex-col">
+      <div className="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/capsulas/${capsule.slug}`)}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />Volver
+            </Button>
+            <h1 className="text-xl font-semibold tracking-tight">Quiz: {capsule.title}</h1>
+          </div>
+          {progress.quizBestScore !== undefined && (
+            <div className="text-xs text-muted-foreground">
+              Mejor puntaje: {progress.quizBestScore}% {progress.quizPassed && "• Aprobado"}
+            </div>
+          )}
         </div>
-        {progress.quizBestScore !== undefined && (
-          <div className="text-xs text-muted-foreground">
-            Mejor puntaje: {progress.quizBestScore}% {progress.quizPassed && "• Aprobado"}
+
+        <Quiz questions={capsule.quiz} onComplete={handleComplete} />
+
+        {submitted && (
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link to={`/capsulas/${capsule.slug}`}>
+              <Button variant="outline">Volver a la cápsula</Button>
+            </Link>
+            {passed === false && (
+              <Button onClick={() => window.location.reload()} variant="default">
+                Reintentar Quiz
+              </Button>
+            )}
           </div>
         )}
       </div>
-
-      <Quiz questions={capsule.quiz} onComplete={handleComplete} />
-
-      {submitted && (
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Link to={`/capsulas/${capsule.slug}`}> 
-            <Button variant="outline">Volver a la cápsula</Button>
-          </Link>
-          {passed === false && (
-            <Button onClick={() => window.location.reload()} variant="default">
-              Reintentar Quiz
-            </Button>
-          )}
-        </div>
-      )}
+      <UnifiedFooter />
     </div>
   );
 };

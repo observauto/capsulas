@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Footer } from "@/components/Footer";
+import { UnifiedFooter } from "@/components/UnifiedFooter";
 import { SponsorStrip } from "@/components/SponsorStrip";
 import { RegistrationModal } from "@/components/RegistrationModal";
 import { Sponsor } from "@/types/capsule";
@@ -231,7 +231,7 @@ const FullCapsule = () => {
             Volver al inicio
           </Button>
         </div>
-        <Footer lastLoadTimestamp={loadTimestamp} />
+        <UnifiedFooter lastLoadTimestamp={loadTimestamp} />
       </div>
     );
   }
@@ -337,7 +337,7 @@ const FullCapsule = () => {
         </div>
       </div>
 
-      <Footer lastLoadTimestamp={loadTimestamp} />
+      <UnifiedFooter lastLoadTimestamp={loadTimestamp} />
       <Toaster />
 
       {/* Modal de registro para usuarios no autenticados */}

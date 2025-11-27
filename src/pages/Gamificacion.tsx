@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AVAILABLE_BADGES } from "@/lib/gamification";
-import { Footer } from "@/components/Footer";
+import { UnifiedFooter } from "@/components/UnifiedFooter";
 import { useToast } from "@/hooks/use-toast";
 import { useGamification } from "@/context/GamificationContext";
 
@@ -153,7 +153,7 @@ export default function Gamificacion() {
       description: `Tu código de validación: ${validationCode}. Guárdalo para reclamar tu premio.`,
       duration: 10000,
     });
-    
+
     // Reset
     setSelectedPrize(null);
     setValidationCode("");
@@ -285,9 +285,8 @@ export default function Gamificacion() {
                 return (
                   <Card
                     key={prize.id}
-                    className={`overflow-hidden transition-all hover:shadow-lg ${
-                      !canRedeemPrize ? "opacity-60" : ""
-                    }`}
+                    className={`overflow-hidden transition-all hover:shadow-lg ${!canRedeemPrize ? "opacity-60" : ""
+                      }`}
                   >
                     <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                       <img
@@ -441,7 +440,7 @@ export default function Gamificacion() {
               Estás a punto de canjear tu premio
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPrize && (
             <div className="space-y-4 py-4">
               <div className="flex items-start gap-4">
@@ -504,7 +503,7 @@ export default function Gamificacion() {
         </DialogContent>
       </Dialog>
 
-      <Footer lastLoadTimestamp={loadTimestamp} />
+      <UnifiedFooter lastLoadTimestamp={loadTimestamp} />
     </div>
   );
 }
