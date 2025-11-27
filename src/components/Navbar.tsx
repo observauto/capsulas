@@ -35,7 +35,7 @@ const PointsPill: React.FC<PointsPillProps> = ({ points, notifications }) => (
     className="group inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/20 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400 dark:hover:bg-blue-500 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
   >
     <Trophy className="h-4 w-4 text-blue-600 transition-colors group-hover:text-white dark:text-blue-400 dark:group-hover:text-white" />
-    <span className="transition-colors group-hover:text-white dark:group-hover:text-white">Premios</span>
+    <span className="transition-colors group-hover:text-white dark:group-hover:text-white">Puntos</span>
     <span
       className="transition-colors group-hover:text-white dark:group-hover:text-white"
       aria-live="polite"

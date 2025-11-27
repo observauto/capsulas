@@ -23,7 +23,7 @@ import {
 import { CapsuleCard } from "@/components/CapsuleCard";
 import { CapsuleModal } from "@/components/CapsuleModal";
 import { Hero } from "@/components/Hero";
-import { Footer } from "@/components/Footer";
+import { UnifiedFooter } from "@/components/UnifiedFooter";
 import { AdSlot } from "@/components/AdSlot";
 import { SubscriptionForm } from "@/components/SubscriptionForm";
 import { Sponsor, FullCapsule } from "@/types/capsule";
@@ -173,7 +173,7 @@ const IndexPage = () => {
         <SubscriptionForm />
       </div>
 
-      <Footer lastLoadTimestamp={loadTimestamp} />
+      <UnifiedFooter lastLoadTimestamp={loadTimestamp} />
 
       <Toaster />
     </div>
