@@ -7,6 +7,7 @@ import { FullCapsule, Section, QuizResult } from "@/types/capsule";
 import { Quiz } from "./Quiz";
 import { markSectionCompleted, getCapsuleProgress, submitQuiz } from "@/lib/capsulesRepo";
 import { useGamification } from "@/context/GamificationContext";
+import { toast } from "@/hooks/use-toast";
 
 interface WizardModeProps {
   capsule: FullCapsule;
@@ -14,7 +15,7 @@ interface WizardModeProps {
 }
 
 export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) => {
-  const { addPoints, grantBadge, grantBadges } = useGamification();
+  const { awardCapsulePoints, grantBadge, grantBadges } = useGamification();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -47,8 +48,10 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
       markSectionCompleted(capsule.slug, currentSection.id);
       setCompletedSteps([...safeCompletedSteps, currentSection.id]);
 
-      // Award points for completing section
-      addPoints(10);
+      setCompletedSteps([...safeCompletedSteps, currentSection.id]);
+
+      // Award points for completing section (unique ID per section)
+      awardCapsulePoints(`${capsule.slug}_section_${currentSection.id}`, 10);
     }
 
     if (currentStep < totalSteps - 1) {
@@ -64,15 +67,28 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
     }
   };
 
-  const handleQuizComplete = (result: QuizResult) => {
+  const handleQuizComplete = async (result: QuizResult) => {
     // IMPORTANTE: Guardar el resultado del quiz en capsul esRepo
     const answers = Array(capsule.quiz?.length || 0).fill(0); // Mock answers, no importa para guardar
     submitQuiz(capsule.slug, answers); // Esto guardará quizCompleted=true y marcará como completada si tienen todas las secciones
 
     setQuizCompleted(true);
 
-    // Award points based on score
-    addPoints(result.scorePercent);
+    // Award points based on score + bonus
+    const totalPoints = result.scorePercent + 50;
+
+    const { success, message } = await awardCapsulePoints(capsule.slug, totalPoints);
+    if (!success && message) {
+      toast({
+        title: "Límite de puntos alcanzado",
+        description: message,
+      });
+    } else if (success) {
+      toast({
+        title: "¡Cápsula Completada!",
+        description: `Has ganado ${totalPoints} puntos.`,
+      });
+    }
 
     // Grant badges
     if (result.badgesGranted.length > 0) {
@@ -82,9 +98,6 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
     // Grant completion badges
     grantBadge("first_capsule");
     grantBadge("quick_learner");
-
-    // Award bonus points for first completion
-    addPoints(50);
   };
 
   const renderSectionContent = (section: Section) => {

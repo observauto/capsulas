@@ -8,6 +8,7 @@ import { FullCapsule, Section, QuizResult } from "@/types/capsule";
 import { Quiz } from "./Quiz";
 import { markSectionCompleted, getCapsuleProgress } from "@/lib/capsulesRepo";
 import { useGamification } from "@/context/GamificationContext";
+import { toast } from "@/hooks/use-toast";
 
 interface ArticleModeProps {
   capsule: FullCapsule;
@@ -15,7 +16,7 @@ interface ArticleModeProps {
 }
 
 export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete }) => {
-  const { addPoints, grantBadge, grantBadges } = useGamification();
+  const { awardCapsulePoints, grantBadge, grantBadges } = useGamification();
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
@@ -49,18 +50,19 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
           const rect = element.getBoundingClientRect();
           if (rect.top <= 150 && rect.bottom >= 150) {
             currentSection = section.id;
-            
+
             // Mark as completed if visible and not already completed
             const safeCompletedSteps = Array.isArray(completedSteps) ? completedSteps : [];
             if (!safeCompletedSteps.includes(section.id)) {
               markSectionCompleted(capsule.slug, section.id);
               setCompletedSteps([...safeCompletedSteps, section.id]);
-              addPoints(10);
+              // Usar ID único para la sección para evitar conflictos con el quiz principal
+              awardCapsulePoints(`${capsule.slug}_section_${section.id}`, 10);
             }
           }
         }
       }
-      
+
       // Check if quiz is visible
       if (capsule.quiz && quizRef.current) {
         const rect = quizRef.current.getBoundingClientRect();
@@ -68,15 +70,15 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
           currentSection = "quiz";
         }
       }
-      
+
       setActiveSection(currentSection);
     };
 
     window.addEventListener("scroll", handleScroll);
     handleScroll(); // Initial check
-    
+
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [addPoints, capsule.quiz, capsule.sections, capsule.slug, completedSteps]);
+  }, [awardCapsulePoints, capsule.quiz, capsule.sections, capsule.slug, completedSteps]);
 
   const scrollToSection = (sectionId: string) => {
     if (sectionId === "quiz") {
@@ -87,23 +89,33 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
     setIndexOpen(false);
   };
 
-  const handleQuizComplete = (result: QuizResult) => {
+  const handleQuizComplete = async (result: QuizResult) => {
     setQuizCompleted(true);
-    
-    // Award points based on score
-    addPoints(result.scorePercent);
-    
+
+    // Award points based on score + bonus
+    const totalPoints = result.scorePercent + 50;
+
+    const { success, message } = await awardCapsulePoints(capsule.slug, totalPoints);
+    if (!success && message) {
+      toast({
+        title: "Límite de puntos alcanzado",
+        description: message,
+      });
+    } else if (success) {
+      toast({
+        title: "¡Cápsula Completada!",
+        description: `Has ganado ${totalPoints} puntos.`,
+      });
+    }
+
     // Grant badges
     if (result.badgesGranted.length > 0) {
       grantBadges(result.badgesGranted);
     }
-    
+
     // Grant completion badges
     grantBadge("first_capsule");
     grantBadge("thorough_reader");
-    
-    // Award bonus points for first completion
-    addPoints(50);
   };
 
   const renderSectionContent = (section: Section) => {
@@ -167,11 +179,10 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
           <button
             key={section.id}
             onClick={() => scrollToSection(section.id)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-              activeSection === section.id
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === section.id
                 ? "bg-primary text-primary-foreground font-medium"
                 : "hover:bg-muted"
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2">
               {completedSteps.includes(section.id) && (
@@ -186,11 +197,10 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
         {capsule.quiz && (
           <button
             onClick={() => scrollToSection("quiz")}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-              activeSection === "quiz"
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === "quiz"
                 ? "bg-primary text-primary-foreground font-medium"
                 : "hover:bg-muted"
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2">
               {quizCompleted && (

@@ -3,6 +3,7 @@ import { supabase, User } from '@/lib/supabase'
 import { fullSync } from '@/lib/gamification-sync'
 import { setActiveUserId } from '@/lib/user-storage'
 import { toast } from '@/hooks/use-toast'
+import { validateAccessCode as validateAccessCodeService } from '@/lib/security'
 
 interface AuthContextType {
   user: User | null
@@ -11,7 +12,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   accessCodeValid: boolean
-  validateAccessCode: (code: string) => boolean
+  validateAccessCode: (code: string) => Promise<boolean>
   clearAccessCode: () => void
   loginAsDev: () => Promise<void>
 }
@@ -132,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Algunos eventos (ej. INITIAL_SESSION) pueden dispararse sin sesión válida
           // inmediatamente después de un SIGNED_IN. Evitamos limpiar el usuario
           // salvo en eventos que representan un cierre real de sesión.
-          if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          if (event === 'SIGNED_OUT' || (event as string) === 'USER_DELETED') {
             console.log('[AUTH] No hay sesion, limpiando usuario')
             setUser(null)
           } else {
@@ -271,8 +272,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const validateAccessCode = (code: string) => {
-    const isValid = code.trim() === '013'
+  const validateAccessCode = async (code: string) => {
+    const isValid = await validateAccessCodeService(code.trim())
     if (isValid) {
       // Guardar timestamp actual para expiración de 30 minutos
       const timestamp = Date.now().toString()
