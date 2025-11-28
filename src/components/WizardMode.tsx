@@ -8,6 +8,7 @@ import { Quiz } from "./Quiz";
 import { markSectionCompleted, getCapsuleProgress, submitQuiz } from "@/lib/capsulesRepo";
 import { useGamification } from "@/context/GamificationContext";
 import { toast } from "@/hooks/use-toast";
+import confetti from "canvas-confetti";
 
 interface WizardModeProps {
   capsule: FullCapsule;
@@ -98,6 +99,14 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
     // Grant completion badges
     grantBadge("first_capsule");
     grantBadge("quick_learner");
+
+    // 🎉 Celebración visual
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#1C3B71', '#D70102', '#FFD700']
+    });
   };
 
   const renderSectionContent = (section: Section) => {
