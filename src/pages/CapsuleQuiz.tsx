@@ -8,6 +8,7 @@ import { useGamification } from "@/context/GamificationContext";
 import { recordQuizLite, getCapsuleProgressLite } from "@/lib/capsuleProgress";
 import { Button } from "@/components/ui/button";
 import { UnifiedFooter } from "@/components/UnifiedFooter";
+import { toast } from "@/hooks/use-toast";
 
 const CapsuleQuiz: React.FC = () => {
   const { slug } = useParams();
@@ -17,17 +18,35 @@ const CapsuleQuiz: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [passed, setPassed] = useState<boolean | null>(null);
   const capsule = slug ? getFullCapsuleBySlug(slug) : null;
-  const { addPoints, grantBadge, grantBadges } = useGamification();
+  const { awardCapsulePoints, grantBadge, grantBadges } = useGamification();
 
   useEffect(() => {
     if (!capsule || !capsule.quiz) setNotFound(true);
     setLoading(false);
   }, [capsule]);
 
-  const handleComplete = (result: QuizResult) => {
+  const handleComplete = async (result: QuizResult) => {
     // Otorgar puntos: porcentaje + bonus si aprueba
-    addPoints(result.scorePercent);
-    if (result.passed) addPoints(10);
+    let totalPoints = result.scorePercent;
+    if (result.passed) totalPoints += 10;
+
+    if (slug) {
+      const { success, message } = await awardCapsulePoints(slug, totalPoints);
+      if (!success && message) {
+        toast({
+          title: "Límite de puntos alcanzado",
+          description: message,
+          variant: "default", // O "destructive" si queremos ser más agresivos
+        });
+      } else if (success) {
+        toast({
+          title: "¡Puntos otorgados!",
+          description: `Has ganado ${totalPoints} puntos por completar esta cápsula.`,
+          variant: "default",
+        });
+      }
+    }
+
     if (result.badgesGranted.length > 0) {
       grantBadges(result.badgesGranted);
     }

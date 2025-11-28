@@ -7,6 +7,7 @@ import {
   readLocalGamificationData,
   writeLocalGamificationData,
 } from "@/lib/gamification-sync";
+import { checkCapsuleLimit, recordCapsuleCompletion } from "@/lib/security";
 
 const MILESTONE_BADGES = [
   { code: "beginner", threshold: 100 },
@@ -48,6 +49,7 @@ type GamificationContextValue = {
   grantBadge: (code: string) => void;
   grantBadges: (codes: string[]) => void;
   reset: () => Promise<void>;
+  awardCapsulePoints: (capsuleId: string, points: number) => Promise<{ success: boolean; message?: string }>;
 };
 
 const GamificationContext = React.createContext<GamificationContextValue | null>(null);
@@ -381,9 +383,32 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     }
   }, [applySnapshot, user]);
 
+  const awardCapsulePoints = React.useCallback(async (capsuleId: string, pointsToAward: number): Promise<{ success: boolean; message?: string }> => {
+    if (!user?.id) {
+      // Si no hay usuario, permitimos (modo invitado o error), pero no registramos en DB
+      // O podríamos bloquear. Asumiremos permitir localmente.
+      addPoints(pointsToAward);
+      return { success: true, message: "Puntos otorgados (local)" };
+    }
+
+    // 1. Verificar límite
+    const limitReached = await checkCapsuleLimit(user.id, capsuleId);
+    if (limitReached) {
+      return { success: false, message: "Ya has recibido puntos por esta cápsula." };
+    }
+
+    // 2. Otorgar puntos
+    addPoints(pointsToAward);
+
+    // 3. Registrar completación
+    await recordCapsuleCompletion(user.id, capsuleId, pointsToAward);
+
+    return { success: true };
+  }, [user, addPoints]);
+
   const value = React.useMemo<GamificationContextValue>(
-    () => ({ points, badges, setPoints, setBadges, addPoints, subtractPoints, grantBadge, grantBadges, reset }),
-    [addPoints, badges, grantBadge, grantBadges, points, reset, setBadges, setPoints, subtractPoints],
+    () => ({ points, badges, setPoints, setBadges, addPoints, subtractPoints, grantBadge, grantBadges, reset, awardCapsulePoints }),
+    [addPoints, badges, grantBadge, grantBadges, points, reset, setBadges, setPoints, subtractPoints, awardCapsulePoints],
   );
 
   return <GamificationContext.Provider value={value}>{children}</GamificationContext.Provider>;

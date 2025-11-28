@@ -35,11 +35,11 @@ export default function AccessGate({ children }: Props) {
     return <>{children}</>;
   }
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const isValid = validateAccessCode(code.trim());
+    const isValid = await validateAccessCode(code.trim());
     if (isValid) {
       // No recargar, solo activar el acceso
       // El estado se actualiza automáticamente en validateAccessCode
