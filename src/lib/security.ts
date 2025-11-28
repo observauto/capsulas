@@ -70,7 +70,7 @@ export async function recordCapsuleCompletion(
     userId: string,
     capsuleId: string,
     points: number
-): Promise<void> {
+): Promise<any> {
     try {
         const { error } = await supabase.from('user_capsule_completions').insert({
             user_id: userId,
@@ -80,8 +80,11 @@ export async function recordCapsuleCompletion(
 
         if (error) {
             console.error('[SECURITY] Error registrando completación de cápsula:', error);
+            return error;
         }
+        return null;
     } catch (error) {
         console.error('[SECURITY] Excepción registrando completación de cápsula:', error);
+        return error as any;
     }
 }

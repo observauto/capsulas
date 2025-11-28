@@ -392,17 +392,28 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     }
 
     // 1. Verificar límite
+    console.log(`[GAMIFICATION] Verificando límite para ${capsuleId} (User: ${user.id})`);
     const limitReached = await checkCapsuleLimit(user.id, capsuleId);
+    console.log(`[GAMIFICATION] Límite alcanzado para ${capsuleId}:`, limitReached);
+
     if (limitReached) {
       return { success: false, message: "Ya has recibido puntos por esta cápsula." };
     }
 
-    // 2. Otorgar puntos
+    // 2. Otorgar puntos (Optimista)
     addPoints(pointsToAward);
 
     // 3. Registrar completación
-    await recordCapsuleCompletion(user.id, capsuleId, pointsToAward);
+    const error = await recordCapsuleCompletion(user.id, capsuleId, pointsToAward);
 
+    if (error) {
+      console.error("[GAMIFICATION] Error crítico registrando completación:", error);
+      // Opcional: Revertir puntos si falla el registro para evitar abuso
+      // subtractPoints(pointsToAward); 
+      return { success: true, message: "Puntos otorgados, pero hubo un error guardando el registro." };
+    }
+
+    console.log(`[GAMIFICATION] Completación registrada exitosamente para ${capsuleId}`);
     return { success: true };
   }, [user, addPoints]);
 
