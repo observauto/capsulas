@@ -414,16 +414,26 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     addPoints(pointsToAward);
 
     // 3. Registrar completación
+    console.log(`[GAMIFICATION] Intentando registrar completación para ${capsuleId}...`);
     const error = await recordCapsuleCompletion(user.id, capsuleId, pointsToAward);
 
     if (error) {
       console.error("[GAMIFICATION] Error crítico registrando completación:", error);
+      console.error("[GAMIFICATION] Detalles del error:", JSON.stringify(error, null, 2));
       // Opcional: Revertir puntos si falla el registro para evitar abuso
       // subtractPoints(pointsToAward); 
       return { success: true, message: "Puntos otorgados, pero hubo un error guardando el registro." };
     }
 
     console.log(`[GAMIFICATION] Completación registrada exitosamente para ${capsuleId}`);
+
+    // DEBUG: Verificar inmediatamente si se guardó
+    const { data: verifyData } = await supabase.from('user_capsule_completions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('capsule_id', capsuleId);
+    console.log(`[GAMIFICATION] Verificación post-insert para ${capsuleId}:`, verifyData);
+
     return { success: true };
   }, [user, addPoints]);
 
