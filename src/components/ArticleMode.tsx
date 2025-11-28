@@ -283,7 +283,7 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
               </div>
             )}
 
-            {/* Completion Button */}
+            {/* Completion Button - Solo redirige, no otorga puntos extra */}
             {quizCompleted && (
               <div className="flex justify-center pb-8">
                 <Button
@@ -292,7 +292,7 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
                   className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white"
                 >
                   <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Completar Cápsula
+                  Volver al Inicio
                 </Button>
               </div>
             )}
