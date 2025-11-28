@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "./AuthContext";
+import { supabase } from "@/lib/supabase";
 import {
   GamificationSnapshot,
   loadGamificationDataFromSupabase,
