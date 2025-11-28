@@ -141,60 +141,8 @@ const FullCapsule = () => {
   const completeCapsuleWithGamification = () => {
     if (!capsule) return;
 
-    // 🎮 GAMIFICACIÓN: Calcular puntos y badges basados en la cápsula
-    // Puntos base por completar cápsula
-    const basePoints = 100; // Puntos base por completar cualquier cápsula
-    const difficultyBonus = capsule.difficulty === "advanced" ? 50 :
-      capsule.difficulty === "intermediate" ? 25 : 0;
-    const totalPoints = basePoints + difficultyBonus;
-
-    // Agregar puntos
-    addPoints(totalPoints);
-
-    // Determinar badges a otorgar
-    const badgesToGrant: string[] = [];
-
-    // Badge por completar primera cápsula
-    const completedCapsules =
-      readUserScopedJSON<string[]>("completed_capsules", user?.id, "completed_capsules") || [];
-    if (completedCapsules.length === 0) {
-      badgesToGrant.push('primera_capsula');
-    }
-
-    // Badge por tipo de cápsula completada
-    switch (capsule.slug) {
-      case 'camion-flota-empresarial':
-        badgesToGrant.push('experto_flotas');
-        break;
-      case 'gas-natural-vehicular':
-        badgesToGrant.push('gnv_pro');
-        break;
-      case 'identifica-modelos-automotrices':
-        badgesToGrant.push('identificador_modelos');
-        break;
-      case 'seguridad-vial-consejos':
-        badgesToGrant.push('seguridad_vial');
-        break;
-      case 'metodos-financiacion':
-        badgesToGrant.push('financiero');
-        break;
-    }
-
-    // Badge por modo de navegación
-    if (capsule.mode === 'wizard') {
-      badgesToGrant.push('wizard_complete');
-    } else {
-      badgesToGrant.push('article_reader');
-    }
-
-    // Otorgar badges
-    if (badgesToGrant.length > 0) {
-      grantBadges(badgesToGrant);
-    }
-
-    // Actualizar cápsulas completadas
-    const updatedCompleted = [...completedCapsules, capsule.slug];
-    writeUserScopedJSON("completed_capsules", updatedCompleted, user?.id);
+    // 🎮 GAMIFICACIÓN: La lógica de puntos y badges principales se maneja en el Quiz
+    // Aquí solo hacemos la celebración visual y navegación
 
     // 🎉 Celebración visual
     confetti({
@@ -206,14 +154,14 @@ const FullCapsule = () => {
 
     toast({
       title: `¡Cápsula Completada! 🎉`,
-      description: `Has ganado ${totalPoints} puntos y ${badgesToGrant.length} nueva(s) insignia(s).`,
-      duration: 5000,
+      description: `Has completado la cápsula exitosamente.`,
+      duration: 3000,
     });
 
     // Navigate back after a short delay
     setTimeout(() => {
       navigate("/");
-    }, 3000);
+    }, 2000);
   };
 
   const isCompleted = capsule ? isCapsuleCompleted(capsule.slug) : false;

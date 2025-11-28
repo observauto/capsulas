@@ -172,7 +172,7 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
                 </CardContent>
               </Card>
             )}
-            <Quiz questions={capsule.quiz} onComplete={handleQuizComplete} />
+            <Quiz questions={capsule.quiz} onComplete={handleQuizComplete} isCompleted={quizCompleted} />
           </div>
         ) : null}
       </div>
@@ -207,7 +207,7 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
               size="sm"
               className="bg-gradient-to-r from-[#1C3B71] to-[#D70102] text-white shrink-0"
             >
-              <span className="hidden sm:inline">Completar</span>
+              <span className="hidden sm:inline">Volver al Inicio</span>
               <CheckCircle2 className="h-4 w-4 ml-1" />
             </Button>
           ) : (

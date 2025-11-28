@@ -277,7 +277,7 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Quiz questions={capsule.quiz} onComplete={handleQuizComplete} />
+                    <Quiz questions={capsule.quiz} onComplete={handleQuizComplete} isCompleted={quizCompleted} />
                   </CardContent>
                 </Card>
               </div>
