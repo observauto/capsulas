@@ -24,11 +24,14 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
   const [indexOpen, setIndexOpen] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const quizRef = useRef<HTMLDivElement | null>(null);
+  const processedSectionsRef = useRef<Set<string>>(new Set()); // Track processed sections to avoid race conditions
 
   // Load progress on mount
   useEffect(() => {
     const progress = getCapsuleProgress(capsule.slug);
     setCompletedSteps(progress.completedSections);
+    // Initialize processed ref with loaded progress
+    processedSectionsRef.current = new Set(progress.completedSections);
     setQuizCompleted(progress.quizCompleted);
   }, [capsule.slug]);
 
@@ -53,9 +56,14 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
 
             // Mark as completed if visible and not already completed
             const safeCompletedSteps = Array.isArray(completedSteps) ? completedSteps : [];
-            if (!safeCompletedSteps.includes(section.id)) {
+
+            // Check both state and ref to prevent race conditions
+            if (!safeCompletedSteps.includes(section.id) && !processedSectionsRef.current.has(section.id)) {
+              // Mark immediately in ref
+              processedSectionsRef.current.add(section.id);
+
               markSectionCompleted(capsule.slug, section.id);
-              setCompletedSteps([...safeCompletedSteps, section.id]);
+              setCompletedSteps(prev => [...prev, section.id]);
               // Usar ID único para la sección para evitar conflictos con el quiz principal
               awardCapsulePoints(`${capsule.slug}_section_${section.id}`, 10);
             }
@@ -180,8 +188,8 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
             key={section.id}
             onClick={() => scrollToSection(section.id)}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === section.id
-                ? "bg-primary text-primary-foreground font-medium"
-                : "hover:bg-muted"
+              ? "bg-primary text-primary-foreground font-medium"
+              : "hover:bg-muted"
               }`}
           >
             <div className="flex items-center gap-2">
@@ -198,8 +206,8 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
           <button
             onClick={() => scrollToSection("quiz")}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === "quiz"
-                ? "bg-primary text-primary-foreground font-medium"
-                : "hover:bg-muted"
+              ? "bg-primary text-primary-foreground font-medium"
+              : "hover:bg-muted"
               }`}
           >
             <div className="flex items-center gap-2">

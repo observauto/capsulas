@@ -105,6 +105,15 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
     remoteProfileExistsRef.current = false;
     lastPersistedRef.current = null;
 
+    // DEBUG: Verificar estado de la tabla de completaciones
+    if (user?.id) {
+      supabase.from('user_capsule_completions').select('*').eq('user_id', user.id)
+        .then(({ data, error }) => {
+          console.log('[DEBUG_DB] Completaciones existentes en DB:', data);
+          if (error) console.error('[DEBUG_DB] Error leyendo completaciones:', error);
+        });
+    }
+
     const bootstrap = async () => {
       let finalSnapshot = localSnapshot;
       let finalUpdatedAt: string | null = localRecord.updatedAt;
