@@ -759,7 +759,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_curiosos_1",
+      order: 1,
       question: "¿Cuál es el origen real del logo de BMW?",
       options: [
         "Bolsillos Profundos (Big Money)",
@@ -769,7 +771,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "BMW significa Bayerische Motoren Werke (Fábrica Bávara de Motores), claramente visible en su logo con colores azul y blanco que representan los colores de Baviera.",
-    },
+    }],
   },
 
   // Capsule 8: Testigos del Tablero (visual)
@@ -848,7 +850,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_testigos_visual_1",
+      order: 1,
       question: "Si aparece una luz roja de temperatura del motor, ¿cuál es la acción correcta?",
       options: [
         "Acelerar para llegar más rápido al taller",
@@ -858,7 +862,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 2,
       explanation: "Una luz roja de temperatura indica sobrecalentamiento severo. Continuar manejando puede causar daño irreversible al motor por deformación de componentes. Debes parar el motor inmediatamente.",
-    },
+    }],
   },
 
   // Capsule 9: Movilidad Ecológica
@@ -937,7 +941,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_eco_1",
+      order: 1,
       question: "¿Cuál es el principal beneficio de un vehículo híbrido plug-in vs uno convencional?",
       options: [
         "Mayor potencia en todos los rangos de velocidad",
@@ -947,7 +953,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "Los vehículos híbridos plug-in (PHEV) pueden recorrer 50-80 km solo con electricidad, permitiendo trayectos diarios sin usar gasolina y reduciendo significativamente las emisiones locales.",
-    },
+    }],
   },
 
   // Capsule 10: El Arte de la Observación
@@ -1026,7 +1032,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_obs_1",
+      order: 1,
       question: "¿Cuál es la primera señal visual que indica posible accidente estructural en un vehículo?",
       options: [
         "Rines con rayones",
@@ -1036,7 +1044,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "Diferencias en alineación entre puertas, capó y maletero son indicadores tempranos de que el vehículo pudo haber sufrido un accidente que afectó su estructura original.",
-    },
+    }],
   },
 
   // Capsule 11: Mecánica para Curiosos
@@ -1115,7 +1123,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_mec_curiosos_1",
+      order: 1,
       question: "Si observas humo azul provenientes del escape, ¿qué sistema está fallando?",
       options: [
         "Sistema de frenos",
@@ -1125,7 +1135,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 2,
       explanation: "El humo azul indica que aceite está siendo quemado en la cámara de combustión, típicamente por válvulas con sellos deteriorados o guías de válvulas desgastadas en el sistema de lubricación.",
-    },
+    }],
   },
 
   // Capsule 12: Lenguaje de Llantas
@@ -1204,7 +1214,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_llantas_1",
+      order: 1,
       question: "Si observas desgaste en el centro de la banda de rodamiento de tus llantas, ¿qué problema tienen?",
       options: [
         "Presión de aire muy alta",
@@ -1214,7 +1226,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 0,
       explanation: "El desgaste en el centro indica over-inflation. Las llantas se abomban en el centro cuando están muy infladas, causando que solo el centro toque el suelo y se desgaste más rápidamente.",
-    },
+    }],
   },
 
   // Capsule 13: El ADN del Vehículo: VIN
@@ -1293,7 +1305,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_vin_1",
+      order: 1,
       question: "¿Qué representan los primeros 3 caracteres del VIN?",
       options: [
         "Color y trim level del vehículo",
@@ -1303,7 +1317,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "Los primeros 3 caracteres del VIN forman el WMI (World Manufacturer Identifier) que identifica el país, fabricante y tipo de vehículo. Es fundamental para decodificar la información básica del vehículo.",
-    },
+    }],
   },
 
   // Capsule 14: Fugas: Las Lágrimas del Auto
@@ -1382,7 +1396,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_fugas_1",
+      order: 1,
       question: "Si encuentras un líquido azul dulce en el área del motor, ¿qué fluido es y qué acción tomar?",
       options: [
         "Aceite de motor - agregar más aceite",
@@ -1392,7 +1408,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "El refrigerante (coolant) típicamente es azul, verde o naranja, tiene olor dulce y es tóxico si se ingiere o contacta la piel. Indica una fuga en el sistema de refrigeración que requiere reparación profesional.",
-    },
+    }],
   },
 
   // Capsule 15: Testigos del Tablero (completa)
@@ -1471,7 +1487,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_testigos_full_1",
+      order: 1,
       question: "Si aparece una luz roja intermitente de 'check engine' mientras manejas, ¿cuál es la acción correcta?",
       options: [
         "Acelerar para llegar más rápido al taller",
@@ -1481,7 +1499,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 2,
       explanation: "Una luz roja intermitente de check engine indica un problema severo activo (como misfires que pueden dañar el convertidor catalítico). Debe manejarse con precaución directa al servicio.",
-    },
+    }],
   },
 
   // Capsule 16: Antes de salir de viaje
@@ -1560,7 +1578,9 @@ export const FULL_CAPSULES: FullCapsule[] = [
         ],
       },
     ],
-    quiz: {
+    quiz: [{
+      id: "q_viaje_1",
+      order: 1,
       question: "Al hacer la inspección pre-viaje, ¿cuál es el mejor momento para revisar el aceite de motor?",
       options: [
         "Con motor frío, antes de arrancar",
@@ -1570,7 +1590,7 @@ export const FULL_CAPSULES: FullCapsule[] = [
       ],
       correctIndex: 1,
       explanation: "El aceite se lee correctamente con el motor caliente para asegurar que el aceite circula completamente y se drena de vuelta al cárter, dando una lectura precisa del nivel.",
-    },
+    }],
   },
 
   // Capsule 17: Mantenimiento Planificado
