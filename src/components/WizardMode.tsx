@@ -100,11 +100,6 @@ export const WizardMode: React.FC<WizardModeProps> = ({ capsule, onComplete }) =
         title: "Límite de puntos alcanzado",
         description: message,
       });
-    } else if (success) {
-      toast({
-        title: "¡Cápsula Completada!",
-        description: `Has ganado ${totalPoints} puntos.`,
-      });
     }
 
     // Grant badges
