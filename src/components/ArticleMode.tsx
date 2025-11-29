@@ -10,6 +10,16 @@ import { markSectionCompleted, getCapsuleProgress } from "@/lib/capsulesRepo";
 import { useGamification } from "@/context/GamificationContext";
 import { toast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ArticleModeProps {
     capsule: FullCapsule;
@@ -23,6 +33,7 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
     const [completedSteps, setCompletedSteps] = useState<string[]>([]);
     const [quizCompleted, setQuizCompleted] = useState(false);
     const [indexOpen, setIndexOpen] = useState(false);
+    const [showEarlyWarning, setShowEarlyWarning] = useState(false);
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const quizRef = useRef<HTMLDivElement | null>(null);
     const processedSectionsRef = useRef<Set<string>>(new Set()); // Track processed sections to avoid race conditions
@@ -34,6 +45,11 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
         // Initialize processed ref with loaded progress
         processedSectionsRef.current = new Set(progress.completedSections);
         setQuizCompleted(progress.quizCompleted);
+
+        // Show warning if already completed
+        if (progress.quizCompleted) {
+            setShowEarlyWarning(true);
+        }
     }, [capsule.slug]);
 
     // Track scroll progress
@@ -308,6 +324,27 @@ export const ArticleMode: React.FC<ArticleModeProps> = ({ capsule, onComplete })
                     </div>
                 </main>
             </div>
+
+            {/* Early Warning Alert */}
+            <AlertDialog open={showEarlyWarning} onOpenChange={setShowEarlyWarning}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Cápsula ya completada</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Ya has completado esta cápsula anteriormente y alcanzaste el límite de puntos.
+                            Puedes repasar el contenido, pero no recibirás puntos adicionales.
+                            <br /><br />
+                            ¿Deseas continuar repasando?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={onComplete}>Volver al inicio</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => setShowEarlyWarning(false)}>
+                            Continuar repasando
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

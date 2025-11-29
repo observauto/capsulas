@@ -308,14 +308,14 @@ export function clearLocalGamificationData(userId?: string | null): void {
 
 type RemoteGamificationLoad =
   | {
-      status: "success";
-      snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null;
-      profileExists: boolean;
-    }
+    status: "success";
+    snapshot: (GamificationSnapshot & { level: number; updatedAt: string | null }) | null;
+    profileExists: boolean;
+  }
   | {
-      status: "error";
-      error: string;
-    };
+    status: "error";
+    error: string;
+  };
 
 function parseTimestamp(value: string | null | undefined): number {
   if (!value) {
@@ -353,7 +353,7 @@ export async function loadGamificationDataFromSupabase(userId: string): Promise<
     const badges = achievementsError
       ? []
       : achievementsData?.map(record => record.achievement?.achievement_code).filter((code): code is string => Boolean(code)) ||
-        [];
+      [];
 
     if (!profileRow) {
       return {
@@ -570,7 +570,27 @@ export async function fullSync(userId: string, userEmail: string | null): Promis
         badges: normalizeBadges([...remoteBadges, ...localSnapshot.badges]),
       };
     } else {
-      shouldPersist = finalSnapshot.points > 0 || finalSnapshot.badges.length > 0;
+      // Remote profile does NOT exist.
+      // Behavior change requested: If remote is empty (DB reset), do NOT restore local data.
+      // Instead, we assume the server is the source of truth for "reset" state.
+      // We will clear local data to match the empty remote state.
+      console.warn("[GAMIFICATION] Perfil remoto no existe. Asumiendo reset de DB. Limpiando datos locales.");
+
+      finalSnapshot = emptySnapshot();
+      shouldPersist = false; // Do not push old local data to new remote
+
+      // Force clear local storage for this user
+      writeLocalGamificationData(finalSnapshot, userId, {
+        updatedAt: nowIso(),
+        lastLocalUpdate: nowIso(),
+      });
+
+      return {
+        success: true,
+        pointsMigrated: 0,
+        badgesMigrated: 0,
+        finalPoints: 0,
+      };
     }
 
     if (!shouldPersist) {
