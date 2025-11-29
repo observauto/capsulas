@@ -90,19 +90,33 @@ export const Quiz: React.FC<QuizProps> = ({ questions, onComplete, context = 'st
     return userAnswer === correctAnswer ? "correct" : "incorrect";
   };
 
+  // Si ya está completado pero no hay resultado local (recarga), reconstruimos un resultado exitoso visual
+  React.useEffect(() => {
+    if (isCompleted && !result) {
+      const mockResult: QuizResult = {
+        scorePercent: 100,
+        correctCount: questions.length,
+        total: questions.length,
+        passed: true,
+        badgesGranted: [],
+      };
+      setResult(mockResult);
+      setSubmitted(true);
+    }
+  }, [isCompleted, result, questions.length]);
+
   return (
     <>
-      {/* ... (modals) */}
+      {result && (
+        <QuizResultModal
+          result={result}
+          open={showResultModal}
+          onOpenChange={setShowResultModal}
+        />
+      )}
 
       <div className="space-y-6">
-        {isCompleted ? (
-          <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 mb-6">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertDescription className="text-green-800 dark:text-green-200 font-medium">
-              Ya has completado este quiz anteriormente.
-            </AlertDescription>
-          </Alert>
-        ) : null}
+        {/* Eliminado el Alert de "Ya completado" para restaurar comportamiento visual original */}
 
         {!submitted && !isCompleted ? (
           <>
