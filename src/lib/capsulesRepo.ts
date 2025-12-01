@@ -269,10 +269,17 @@ export function isCapsuleCompleted(slug: string): boolean {
   const p = getCapsuleProgress(slug);
 
   // Una cápsula está completada si:
-  // 1. El flag `completed` está en true (se establece solo en submitQuiz cuando secciones + quiz están hechos)
-  // 2. O si manualmente todas las secciones + quiz están completados
+  // 1. El flag `completed` está en true
+  // 2. O si el porcentaje de progreso es 100% (cubre casos manuales o antiguos)
+  // 3. O si manualmente todas las secciones + quiz están completados
+
+  if (p.completed) return true;
+
+  const percent = getCapsuleCompletionPercent(slug);
+  if (percent === 100) return true;
+
   const sectionsOk = capsule.sections.every(s => p.completedSections.includes(s.id));
-  return (sectionsOk && p.quizCompleted) || !!p.completed;
+  return (sectionsOk && p.quizCompleted);
 }
 
 export function getCapsuleCompletionPercent(slug: string): number {

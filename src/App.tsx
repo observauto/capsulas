@@ -44,11 +44,21 @@ const App = () => (
             <OnlyFavoritesProvider>
               <GamificationProvider>
                 {/* AccessGate es la capa externa - solo maneja código "013" */}
-              <AccessGate>
-                {/* InternalPlatform es la capa interna - maneja Google Sign-In, UserGuide, paneles */}
-                <InternalPlatform>
-                  {useGlobalLayout ? (
-                    <RootLayout>
+                <AccessGate>
+                  {/* InternalPlatform es la capa interna - maneja Google Sign-In, UserGuide, paneles */}
+                  <InternalPlatform>
+                    {useGlobalLayout ? (
+                      <RootLayout>
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="/capsulas/:slug" element={<FullCapsule />} />
+                          <Route path="/gamificacion" element={<GamificacionRedirect />} />
+                          <Route path="/backoffice" element={<UnificadoDashboard />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </RootLayout>
+                    ) : (
+                      // Legacy mode: pages still include their own Navbar/Footer (will be removed in future)
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/capsulas/:slug" element={<FullCapsule />} />
@@ -56,19 +66,9 @@ const App = () => (
                         <Route path="/backoffice" element={<UnificadoDashboard />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                    </RootLayout>
-                  ) : (
-                    // Legacy mode: pages still include their own Navbar/Footer (will be removed in future)
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/capsulas/:slug" element={<FullCapsule />} />
-                      <Route path="/gamificacion" element={<GamificacionRedirect />} />
-                      <Route path="/backoffice" element={<UnificadoDashboard />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  )}
-                </InternalPlatform>
-              </AccessGate>
+                    )}
+                  </InternalPlatform>
+                </AccessGate>
               </GamificationProvider>
             </OnlyFavoritesProvider>
           </AuthProvider>
