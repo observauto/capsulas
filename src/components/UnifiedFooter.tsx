@@ -1,5 +1,9 @@
 import React from "react";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface FooterProps {
     lastLoadTimestamp?: string;
@@ -11,6 +15,32 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
         dateStyle: "long",
         timeStyle: "short",
     });
+
+    const { user } = useAuth();
+    const isDevMode = user?.id === 'dev-user-id';
+
+    const handleResetLocalData = () => {
+        if (confirm('⚠️ ¿Seguro que quieres borrar TODOS los datos locales?\n\nEsto eliminará:\n- Progreso de cápsulas\n- Premios canjeados\n- Favoritos\n- Configuraciones\n\nLa página se recargará automáticamente.')) {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                toast({
+                    title: "Datos locales eliminados",
+                    description: "Recargando la página...",
+                });
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } catch (error) {
+                console.error('Error clearing storage:', error);
+                toast({
+                    title: "Error",
+                    description: "No se pudieron eliminar los datos locales",
+                    variant: "destructive"
+                });
+            }
+        }
+    };
 
     return (
         <footer className="w-full border-t border-border bg-muted/30 mt-16">
@@ -123,8 +153,22 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
                             Cookies
                         </a>
                     </div>
-                    <div className="text-xs">
-                        Última carga: {loadTime}
+                    <div className="flex items-center gap-3">
+                        <div className="text-xs">
+                            Última carga: {loadTime}
+                        </div>
+                        {isDevMode && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleResetLocalData}
+                                className="text-xs h-7 px-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                                title="Borrar todos los datos locales (localStorage)"
+                            >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Reset Local Data
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
