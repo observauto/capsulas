@@ -1,4 +1,3 @@
-```typescript
 import React from "react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/AuthContext";
@@ -16,7 +15,7 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
         dateStyle: "long",
         timeStyle: "short",
     });
-    
+
     const { user } = useAuth();
     const isDevMode = user?.id === 'dev-user-id';
 
@@ -176,4 +175,3 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
         </footer>
     );
 };
-```
