@@ -158,18 +158,16 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
                         <div className="text-xs">
                             Última carga: {loadTime}
                         </div>
-                        {isDevMode && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleResetLocalData}
-                                className="text-xs h-7 px-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                                title="Borrar todos los datos locales (localStorage)"
-                            >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Reset Local Data
-                            </Button>
-                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetLocalData}
+                            className="text-xs h-7 px-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                            title="Borrar todos los datos locales (localStorage)"
+                        >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Reset Local Data
+                        </Button>
                     </div>
                 </div>
             </div>
