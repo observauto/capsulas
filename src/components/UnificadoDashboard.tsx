@@ -292,17 +292,42 @@ export default function UnificadoDashboard() {
   const [validationCode, setValidationCode] = useState("");
 
   // Estados para el perfil
-  const [userProfile, setUserProfile] = useState(() => loadUserProfile(activeUserId));
+  const [userProfile, setUserProfile] = useState(() => {
+    const local = loadUserProfile(activeUserId);
+    // Si tenemos usuario autenticado, mezclar con datos de auth para asegurar que no sea el demo
+    if (user) {
+      return {
+        ...local,
+        name: user.name || local.name,
+        email: user.email || local.email,
+        avatar: user.avatar_url || local.avatar,
+        // Mantener otros campos locales si existen
+      };
+    }
+    return local;
+  });
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   // Estados para cápsulas de usuario (dinámico)
   const [userCapsules, setUserCapsules] = useState<CapsuleProgress[]>(() => loadUserCapsules(activeUserId));
 
   React.useEffect(() => {
-    setUserProfile(loadUserProfile(activeUserId));
+    // Al cambiar de usuario, recargar todo
+    const local = loadUserProfile(activeUserId);
+    if (user) {
+      setUserProfile({
+        ...local,
+        name: user.name || local.name,
+        email: user.email || local.email,
+        avatar: user.avatar_url || local.avatar,
+      });
+    } else {
+      setUserProfile(local);
+    }
+
     setRedeemedPrizes(loadRedeemedPrizes(activeUserId));
     setUserCapsules(loadUserCapsules(activeUserId));
-  }, [activeUserId]);
+  }, [activeUserId, user]);
 
   // Actualizar cápsulas cuando cambien en localStorage
   React.useEffect(() => {
