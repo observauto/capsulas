@@ -15,7 +15,7 @@ import { GamificationProvider } from "@/context/GamificationContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { OnlyFavoritesProvider } from "@/context/OnlyFavoritesContext";
 import BackofficeDashboard from "@/components/backoffice/BackofficeDashboard";
-import { UnificadoDashboard } from "@/components/UnificadoDashboard";
+import UnificadoDashboard from "@/components/UnificadoDashboard";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
