@@ -72,6 +72,8 @@ export const Navbar: React.FC = () => {
   // Helper para cerrar el menú móvil después de una acción
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+    // Scroll al inicio de la página
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleShare = async () => {

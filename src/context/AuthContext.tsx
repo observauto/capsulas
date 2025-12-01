@@ -85,7 +85,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AUTH] Iniciando sincronización de datos...');
 
         try {
-            const syncPromise = fullSync(userId, userEmail);
+            // Obtener el usuario actual de Supabase para acceder a user_metadata completo
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+            const syncPromise = fullSync(
+                userId,
+                userEmail,
+                // Pasar metadata completa de Google
+                currentUser ? {
+                    name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || userEmail.split('@')[0],
+                    avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture,
+                    phone: currentUser.user_metadata?.phone_number || currentUser.phone,
+                } : undefined
+            );
+
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout en sincronización (30s)')), 30000)
             );

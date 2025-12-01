@@ -263,21 +263,14 @@ export function setCapsuleCompleted(slug: string) {
 }
 
 export function isCapsuleCompleted(slug: string): boolean {
-  // Método 1: Revisar en completed_capsules (más confiable)
-  try {
-    const completedRaw = localStorage.getItem('completed_capsules');
-    if (completedRaw) {
-      const completed = JSON.parse(completedRaw);
-      if (completed.some((c: any) => c.slug === slug)) {
-        return true;
-      }
-    }
-  } catch { }
-
-  // Método 2 (fallback): Revisar progreso individual
   const capsule = getFullCapsuleBySlug(slug);
   if (!capsule) return false;
+
   const p = getCapsuleProgress(slug);
+
+  // Una cápsula está completada si:
+  // 1. El flag `completed` está en true (se establece solo en submitQuiz cuando secciones + quiz están hechos)
+  // 2. O si manualmente todas las secciones + quiz están completados
   const sectionsOk = capsule.sections.every(s => p.completedSections.includes(s.id));
   return (sectionsOk && p.quizCompleted) || !!p.completed;
 }

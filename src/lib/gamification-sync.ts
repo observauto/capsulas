@@ -459,7 +459,12 @@ async function ensureBadges(userId: string, desiredBadges: string[]): Promise<nu
   return rows.length;
 }
 
-type PersistMetadata = { email?: string | null; name?: string | null };
+type PersistMetadata = {
+  email?: string | null;
+  name?: string | null;
+  avatar_url?: string | null;
+  phone?: string | null;
+};
 
 type PersistOptions = {
   /**
@@ -500,6 +505,16 @@ export async function persistGamificationProgress(
     basePayload.name = trimmedName;
   }
 
+  // Guardar avatar_url de Google
+  if (metadata?.avatar_url) {
+    basePayload.avatar_url = metadata.avatar_url;
+  }
+
+  // Guardar phone de Google
+  if (metadata?.phone) {
+    basePayload.phone = metadata.phone;
+  }
+
   const { error: upsertError } = await supabase
     .from("user_profiles")
     .upsert(basePayload, { onConflict: "user_id", ignoreDuplicates: false })
@@ -515,7 +530,11 @@ export async function persistGamificationProgress(
   return timestamp;
 }
 
-export async function fullSync(userId: string, userEmail: string | null): Promise<FullSyncResult> {
+export async function fullSync(
+  userId: string,
+  userEmail: string | null,
+  userMetadata?: { name?: string; avatar_url?: string | null; phone?: string | null }
+): Promise<FullSyncResult> {
   try {
     const localRecord = readLocalGamificationData(userId);
     const localSnapshot = cloneSnapshot(localRecord.snapshot);

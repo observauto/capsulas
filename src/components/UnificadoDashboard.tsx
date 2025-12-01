@@ -437,10 +437,16 @@ export default function UnificadoDashboard() {
         status: 'pending'
       };
 
+      console.log('[PRIZES] Canjeando premio:', newRedeemedPrize);
+      console.log('[PRIZES] Premios actuales:', redeemedPrizes);
+
       // Agregar a la lista local Y guardar en localStorage
       const updatedPrizes = [newRedeemedPrize, ...redeemedPrizes];
       setRedeemedPrizes(updatedPrizes);
       saveRedeemedPrizes(updatedPrizes, activeUserId);
+
+      console.log('[PRIZES] Premios actualizados:', updatedPrizes);
+      console.log('[PRIZES] Total premios guardados:', updatedPrizes.length);
 
       // Disparar evento para notificar a otros componentes
       window.dispatchEvent(new CustomEvent('prizes:redeem', {
@@ -460,8 +466,11 @@ export default function UnificadoDashboard() {
       // Reset
       setSelectedPrize(null);
       setValidationCode("");
+
+      // Cambiar a la pestaña de "reclamados" para mostrar el premio
+      setPuntosSubTab('reclamados');
     } catch (error) {
-      console.error('Errorredeeming prize:', error);
+      console.error('Error redeeming prize:', error);
       toast({
         title: "Error",
         description: "No se pudo canjear el premio. Intenta de nuevo.",
