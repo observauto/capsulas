@@ -17,7 +17,8 @@ export const UnifiedFooter = ({ lastLoadTimestamp }: FooterProps) => {
     });
 
     const { user } = useAuth();
-    const isDevMode = user?.id === 'dev-user-id';
+    // Permitir acceso a herramientas dev al usuario dev y al admin Felipe
+    const isDevMode = user?.id === 'dev-user-id' || user?.email === 'felipegaran@gmail.com';
 
     const handleResetLocalData = () => {
         if (confirm('⚠️ ¿Seguro que quieres borrar TODOS los datos locales?\n\nEsto eliminará:\n- Progreso de cápsulas\n- Premios canjeados\n- Favoritos\n- Configuraciones\n\nLa página se recargará automáticamente.')) {
