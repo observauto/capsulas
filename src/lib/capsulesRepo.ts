@@ -165,19 +165,9 @@ export function markSectionCompleted(slug: string, sectionId: string) {
     entry.completedSections.push(sectionId);
   }
 
-  // IMPORTANTE: Si todas las secciones están completadas, marcar como completada
-  if (capsule && capsule.sections) {
-    // Excluir secciones de tipo 'quizIntro' porque no son navegables en WizardMode
-    const navigableSections = capsule.sections.filter(s => s.type !== 'quizIntro');
-    const allSectionsDone = navigableSections.every(s =>
-      entry.completedSections.includes(s.id)
-    );
-    if (allSectionsDone && !entry.completed) {
-      entry.completed = true;
-      entry.completedAt = Date.now();
-      console.log(`[CAPSULES_REPO] Cápsula ${slug} marcada como completada (todas las secciones)`);
-    }
-  }
+  // IMPORTANTE: NO marcar como completada aquí.
+  // La cápsula solo se marca como completada cuando se completa el quiz (ver submitQuiz)
+  // Este cambio corrige el bug donde las cápsulas aparecían completadas solo por leer todas las secciones
 
   all[slug] = entry;
   saveAllProgressLocal(all);
@@ -231,11 +221,12 @@ export function submitQuiz(slug: string, answers: number[]): QuizResult {
     entry.completedSections.includes(s.id)
   );
 
-  // Marcar como completada si todas las secciones navegables están hechas (sin importar si aprobó el quiz)
+  // IMPORTANTE: Este es el ÚNICO lugar donde se marca una cápsula como completada.
+  // Se requiere que TODAS las secciones estén hechas Y el quiz esté completado.
   if (allSectionsDone && !entry.completed) {
     entry.completed = true;
     entry.completedAt = Date.now();
-    console.log(`[CAPSULES_REPO] Cápsula ${slug} marcada como completada (quiz: ${scorePercent}%)`);
+    console.log(`[CAPSULES_REPO] Cápsula ${slug} marcada como completada (secciones + quiz: ${scorePercent}%)`);
   } else if (!allSectionsDone) {
     console.warn(`[CAPSULES_REPO] Quiz de ${slug} completado pero faltan secciones: ${entry.completedSections.length}/${navigableSections.length}`);
   }
