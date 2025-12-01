@@ -779,7 +779,7 @@ export default function UnificadoDashboard() {
                                 <CardTitle className="text-sm font-medium opacity-90">Premios Canjeados</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{redeemedPrizes.filter(p => p.status === 'pending').length}</div>
+                                <div className="text-2xl font-bold">{redeemedPrizes.filter(p => !p.status || p.status === 'pending').length}</div>
                                 <p className="text-xs opacity-75 mt-1">
                                     Pendientes de entrega
                                 </p>
@@ -1060,9 +1060,9 @@ export default function UnificadoDashboard() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="max-h-[40vh] overflow-y-auto">
-                                    {redeemedPrizes.filter(p => p.status === 'pending').length > 0 ? (
+                                    {redeemedPrizes.filter(p => !p.status || p.status === 'pending').length > 0 ? (
                                         <div className="space-y-2">
-                                            {redeemedPrizes.filter(p => p.status === 'pending').map((prize) => (
+                                            {redeemedPrizes.filter(p => !p.status || p.status === 'pending').map((prize) => (
                                                 <div
                                                     key={prize.id}
                                                     className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50 hover:shadow-md transition-shadow"
