@@ -1236,11 +1236,11 @@ export default function UnificadoDashboard() {
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                               <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
-                              <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at
+                              <span className={`text-xs px-2 py-1 rounded-full ${capsule.completed_at || capsule.progress_percentage === 100
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-blue-100 text-blue-800'
                                 }`}>
-                                {capsule.completed_at ? 'Completada' : 'En progreso'}
+                                {capsule.completed_at || capsule.progress_percentage === 100 ? 'Completada' : 'En progreso'}
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">{capsule.section_name}</p>
