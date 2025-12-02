@@ -164,6 +164,7 @@ export const Navbar: React.FC = () => {
                     <div className="hidden md:flex items-center ml-4 border-l border-gray-200 pl-4 h-6">
                         <Link
                             to="/"
+                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                             className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors dark:text-slate-400 dark:hover:text-blue-400"
                         >
                             <Home className="h-4 w-4" />
@@ -307,7 +308,18 @@ export const Navbar: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center md:hidden">
+                <div className="flex items-center gap-2 md:hidden">
+                    <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 rounded-lg border border-border/60 bg-white text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:text-blue-700 dark:border-white/20 dark:bg-slate-900 dark:text-slate-100"
+                            aria-label="Ir al inicio"
+                        >
+                            <Home className="h-5 w-5" />
+                        </Button>
+                    </Link>
+
                     <Sheet open={mobileMenuOpen} onOpenChange={toggleMenu}>
                         <SheetTrigger asChild>
                             <Button
@@ -383,6 +395,7 @@ export const Navbar: React.FC = () => {
                                         <div onClick={closeMobileMenu}>
                                             <Link
                                                 to="/"
+                                                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                                                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
                                             >
                                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
