@@ -104,7 +104,7 @@ export const DashboardCapsules: React.FC<DashboardCapsulesProps> = ({
       </CardHeader>
       <CardContent>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="all">Todas</TabsTrigger>
             <TabsTrigger value="in_progress">En Progreso</TabsTrigger>
             <TabsTrigger value="completed">Completadas</TabsTrigger>
