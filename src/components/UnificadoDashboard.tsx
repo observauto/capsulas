@@ -432,6 +432,31 @@ export default function UnificadoDashboard() {
                 </TabsList>
 
                 <TabsContent value="resumen" className="space-y-6">
+                    {/* 1. Últimas Insignias (Ahora arriba) */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5" />Últimas Insignias</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {earnedBadges.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {earnedBadges.slice(0, 3).map((badge) => (
+                                        <div key={badge.code} className="flex items-center gap-3 p-3 border rounded-lg bg-slate-50">
+                                            <div className="text-3xl">{badge.icon}</div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">{badge.name}</p>
+                                                <p className="text-xs text-gray-600 line-clamp-1">{badge.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-600 text-center py-4">Aún no has obtenido insignias. ¡Completa cápsulas para ganar!</p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* 2. Estadísticas Generales (2x2) */}
                     <DashboardStats
                         points={points}
                         userLevel={userProfile.level}
@@ -439,6 +464,8 @@ export default function UnificadoDashboard() {
                         pendingPrizesCount={redeemedPrizes.filter(p => !p.status || p.status === 'pending').length}
                         deliveredPrizesCount={redeemedPrizes.filter(p => p.status === 'delivered').length}
                     />
+
+                    {/* 3. Progreso de Nivel */}
                     <DashboardLevelProgress
                         userLevel={userProfile.level}
                         points={points}
@@ -447,50 +474,26 @@ export default function UnificadoDashboard() {
                         pointsToNext={getNextLevelPoints(userProfile.level) - points}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5" />Próximo Hito</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div>
-                                    <div className="flex items-center justify-between mb-2 text-sm">
-                                        <span>Próximo nivel: {nextMilestone.name}</span>
-                                        <span className="font-semibold">{nextMilestone.points} pts</span>
-                                    </div>
-                                    <Progress value={progressToNext} className="h-3" />
+                    {/* 4. Próximo Hito (Solo) */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5" />Próximo Hito</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <div className="flex items-center justify-between mb-2 text-sm">
+                                    <span>Próximo nivel: {nextMilestone.name}</span>
+                                    <span className="font-semibold">{nextMilestone.points} pts</span>
                                 </div>
-                                <div className="text-center p-3 rounded-lg bg-background/50">
-                                    <Gift className="h-6 w-6 mx-auto mb-1 text-green-500" />
-                                    <div className="text-2xl font-bold">{PRIZES.filter(p => canRedeem(p.points)).length}</div>
-                                    <div className="text-xs text-muted-foreground">Premios Disponibles</div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5" />Últimas Insignias</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {earnedBadges.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {earnedBadges.slice(0, 3).map((badge) => (
-                                            <div key={badge.code} className="flex items-center gap-3">
-                                                <div className="text-2xl">{badge.icon}</div>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium">{badge.name}</p>
-                                                    <p className="text-xs text-gray-600">{badge.description}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-gray-600 text-center py-4">Aún no has obtenido insignias</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                                <Progress value={progressToNext} className="h-3" />
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                                <Gift className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                                <div className="text-2xl font-bold">{PRIZES.filter(p => canRedeem(p.points)).length}</div>
+                                <div className="text-xs text-muted-foreground">Premios Disponibles</div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="premios" className="space-y-6">

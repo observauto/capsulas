@@ -382,6 +382,20 @@ export const Navbar: React.FC = () => {
                                     <SheetClose asChild>
                                         <div onClick={closeMobileMenu}>
                                             <Link
+                                                to="/"
+                                                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
+                                            >
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                                    <Home className="h-4 w-4" />
+                                                </div>
+                                                <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Inicio</span>
+                                            </Link>
+                                        </div>
+                                    </SheetClose>
+
+                                    <SheetClose asChild>
+                                        <div onClick={closeMobileMenu}>
+                                            <Link
                                                 to="/backoffice?tab=premios"
                                                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
                                             >
