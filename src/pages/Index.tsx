@@ -28,7 +28,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { SubscriptionForm } from "@/components/SubscriptionForm";
 import { Sponsor, FullCapsule } from "@/types/capsule";
 import { Toaster } from "@/components/ui/toaster";
-import { listFullCapsules, isCapsuleCompleted } from "@/lib/capsulesRepo";
+import { listFullCapsules, isCapsuleCompleted, getCapsuleProgress } from "@/lib/capsulesRepo";
 import { useOnlyFavorites } from "@/context/OnlyFavoritesContext";
 
 // Icon mapping para los slugs de fullCapsules
@@ -108,6 +108,13 @@ const IndexPage = () => {
     return isCapsuleCompleted(capsuleSlug);
   };
 
+  const getInProgressStatus = (capsuleSlug: string): boolean => {
+    const progress = getCapsuleProgress(capsuleSlug);
+    const isCompleted = isCapsuleCompleted(capsuleSlug);
+    if (isCompleted) return false;
+    return progress.completedSections.length > 0 || progress.quizCompleted;
+  };
+
   // Create grid items with ads interspersed
   const gridItems = useMemo(() => {
     const items: Array<{
@@ -163,6 +170,7 @@ const IndexPage = () => {
               isFavorite={isFavorite(capsule.slug)}
               onToggleFavorite={() => toggleFavorite(capsule.slug)}
               isCompleted={getCompletionStatus(capsule.slug)}
+              isInProgress={getInProgressStatus(capsule.slug)}
             />
           );
         })}

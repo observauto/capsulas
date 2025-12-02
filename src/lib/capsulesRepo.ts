@@ -165,9 +165,20 @@ export function markSectionCompleted(slug: string, sectionId: string) {
     entry.completedSections.push(sectionId);
   }
 
-  // IMPORTANTE: NO marcar como completada aquí.
-  // La cápsula solo se marca como completada cuando se completa el quiz (ver submitQuiz)
-  // Este cambio corrige el bug donde las cápsulas aparecían completadas solo por leer todas las secciones
+  // IMPORTANTE: Si la cápsula NO tiene quiz, verificar si se completaron todas las secciones
+  const hasQuiz = capsule.quiz && capsule.quiz.length > 0;
+
+  // Excluir secciones de tipo 'quizIntro'
+  const navigableSections = capsule.sections.filter(s => s.type !== 'quizIntro');
+  const allSectionsDone = navigableSections.every(s =>
+    entry.completedSections.includes(s.id)
+  );
+
+  if (!hasQuiz && allSectionsDone && !entry.completed) {
+    entry.completed = true;
+    entry.completedAt = Date.now();
+    console.log(`[CAPSULES_REPO] Cápsula ${slug} (SIN QUIZ) marcada como completada`);
+  }
 
   all[slug] = entry;
   saveAllProgressLocal(all);

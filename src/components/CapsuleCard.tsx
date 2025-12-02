@@ -11,6 +11,7 @@ interface CapsuleCardProps {
   isFavorite: boolean;
   onToggleFavorite: () => void;
   isCompleted?: boolean;
+  isInProgress?: boolean;
   breadcrumbLabel?: string; // optional override for breadcrumb
 }
 
@@ -22,6 +23,7 @@ export const CapsuleCard: React.FC<CapsuleCardProps> = ({
   isFavorite,
   onToggleFavorite,
   isCompleted = false,
+  isInProgress = false,
   breadcrumbLabel = title,
 }) => {
   return (
@@ -42,6 +44,12 @@ export const CapsuleCard: React.FC<CapsuleCardProps> = ({
               <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4 bg-green-50 text-green-700 border-green-200">
                 <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
                 Completada
+              </Badge>
+            )}
+            {!isCompleted && isInProgress && (
+              <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-700 border-blue-200">
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-1" />
+                En Progreso
               </Badge>
             )}
           </button>
