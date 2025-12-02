@@ -105,21 +105,51 @@ const loadUserCapsules = (userId?: string | null): CapsuleProgress[] => {
     }
 };
 
-// PREMIOS REDIMIDOS - Sistema de persistencia completo
-const loadRedeemedPrizes = (userId?: string | null): RedeemedPrize[] => {
+// PREMIOS REDIMIDOS - Sistema de persistencia con Supabase
+import { supabase } from "@/lib/supabase";
+
+const loadRedeemedPrizes = async (userId?: string | null): Promise<RedeemedPrize[]> => {
+    if (!userId) return [];
     try {
-        return readUserScopedJSON<RedeemedPrize[]>(REDEEMED_PRIZES_KEY, userId, REDEEMED_PRIZES_KEY) || [];
+        const { data, error } = await supabase
+            .from('redeemed_prizes')
+            .select('*')
+            .eq('user_id', userId)
+            .order('redeemed_at', { ascending: false });
+
+        if (error) {
+            console.error('Error loading prizes from Supabase:', error);
+            return [];
+        }
+        return data as RedeemedPrize[];
     } catch (error) {
-        console.error('Error loading redeemed prizes from localStorage:', error);
+        console.error('Error loading redeemed prizes:', error);
         return [];
     }
 };
 
-const saveRedeemedPrizes = (prizes: RedeemedPrize[], userId?: string | null): void => {
+const saveRedeemedPrizeToSupabase = async (prize: RedeemedPrize, userId: string): Promise<boolean> => {
     try {
-        writeUserScopedJSON(REDEEMED_PRIZES_KEY, prizes, userId);
+        const { error } = await supabase
+            .from('redeemed_prizes')
+            .insert([{
+                user_id: userId,
+                prize_id: prize.prize_id,
+                prize_name: prize.prize_name,
+                prize_points: prize.prize_points,
+                validation_code: prize.validation_code,
+                redeemed_at: prize.redeemed_at,
+                status: prize.status
+            }]);
+
+        if (error) {
+            console.error('Error saving prize to Supabase:', error);
+            return false;
+        }
+        return true;
     } catch (error) {
-        console.error('Error saving redeemed prizes to localStorage:', error);
+        console.error('Error saving prize:', error);
+        return false;
     }
 };
 
@@ -156,7 +186,7 @@ export default function UnificadoDashboard() {
         }
     };
 
-    const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>(() => loadRedeemedPrizes(activeUserId));
+    const [redeemedPrizes, setRedeemedPrizes] = useState<RedeemedPrize[]>([]);
     const [showRedeemModal, setShowRedeemModal] = useState(false);
     const [selectedPrize, setSelectedPrize] = useState<Prize | null>(null);
     const [validationCode, setValidationCode] = useState("");
@@ -192,7 +222,11 @@ export default function UnificadoDashboard() {
             setUserProfile(local);
         }
 
-        setRedeemedPrizes(loadRedeemedPrizes(activeUserId));
+        if (activeUserId) {
+            loadRedeemedPrizes(activeUserId).then(prizes => setRedeemedPrizes(prizes));
+        } else {
+            setRedeemedPrizes([]);
+        }
         setUserCapsules(loadUserCapsules(activeUserId));
     }, [activeUserId, user]);
 
@@ -209,21 +243,6 @@ export default function UnificadoDashboard() {
         return () => {
             window.removeEventListener('storage', handleStorageChange);
             window.removeEventListener('gamification:update', handleCustomUpdate);
-        };
-    }, [activeUserId]);
-
-    React.useEffect(() => {
-        const prizesKey = buildUserScopedKey(REDEEMED_PRIZES_KEY, activeUserId);
-        const handlePrizesChange = (event?: StorageEvent) => {
-            if (event && event.key && event.key !== prizesKey) return;
-            setRedeemedPrizes(loadRedeemedPrizes(activeUserId));
-        };
-        const handleCustomPrize = () => handlePrizesChange();
-        window.addEventListener('storage', handlePrizesChange);
-        window.addEventListener('prizes:redeem', handleCustomPrize);
-        return () => {
-            window.removeEventListener('storage', handlePrizesChange);
-            window.removeEventListener('prizes:redeem', handleCustomPrize);
         };
     }, [activeUserId]);
 
@@ -291,7 +310,10 @@ export default function UnificadoDashboard() {
 
             const updatedPrizes = [newRedeemedPrize, ...redeemedPrizes];
             setRedeemedPrizes(updatedPrizes);
-            saveRedeemedPrizes(updatedPrizes, activeUserId);
+
+            if (activeUserId) {
+                saveRedeemedPrizeToSupabase(newRedeemedPrize, activeUserId);
+            }
 
             window.dispatchEvent(new CustomEvent('prizes:redeem', {
                 detail: { prize: newRedeemedPrize, totalCount: updatedPrizes.length }
