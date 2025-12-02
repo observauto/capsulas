@@ -1,4 +1,3 @@
-```typescript
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,11 +61,10 @@ export const DashboardCapsules: React.FC<DashboardCapsulesProps> = ({
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium text-gray-900">{capsule.capsule_name}</h4>
-                  <span className={`text - xs px - 2 py - 1 rounded - full ${
-    isCompleted
-        ? 'bg-green-100 text-green-800'
-        : 'bg-blue-100 text-blue-800'
-} `}>
+                  <span className={`text-xs px-2 py-1 rounded-full ${isCompleted
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-blue-100 text-blue-800'
+                    } `}>
                     {isCompleted ? 'Completada' : 'En progreso'}
                   </span>
                 </div>
@@ -84,7 +82,7 @@ export const DashboardCapsules: React.FC<DashboardCapsulesProps> = ({
                 variant="outline"
                 size="sm"
                 className="ml-4 shrink-0"
-                onClick={() => navigate(`/ capsulas / ${ capsule.slug } `)}
+                onClick={() => navigate(`/capsulas/${capsule.slug}`)}
               >
                 <span className="hidden sm:inline">Ir a la cápsula</span>
                 <ArrowRight className="h-4 w-4 sm:ml-2" />
@@ -133,4 +131,3 @@ export const DashboardCapsules: React.FC<DashboardCapsulesProps> = ({
     </Card>
   );
 };
-```
